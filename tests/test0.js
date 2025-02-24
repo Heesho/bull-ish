@@ -11,17 +11,17 @@ const price = convert("0.04269", 18);
 const price2 = convert("0.08538", 18);
 const price10 = convert("0.4269", 18);
 const price100 = convert("4.269", 18);
-const gamePrice = convert("0.69", 18);
+const gamePrice = convert("6.9", 18);
 
-let owner, treasury, user0, user1, user2, user3, developer;
+let owner, treasury, user0, user1, user2, user3, user4, developer;
 let base, voter;
-let moola, bullas, bullish, factory, plugin, multicall, vaultFactory;
+let moola, bullas, factory, plugin, multicall, vaultFactory;
 
 describe("local: test0", function () {
   before("Initial set up", async function () {
     console.log("Begin Initialization");
 
-    [owner, treasury, user0, user1, user2, user3, developer] =
+    [owner, treasury, user0, user1, user2, user3, user4, developer] =
       await ethers.getSigners();
 
     const vaultFactoryArtifact = await ethers.getContractFactory(
@@ -42,20 +42,12 @@ describe("local: test0", function () {
     bullas = await bullasArtifact.deploy();
     console.log("- Bullas Initialized");
 
-    const bullishArtifact = await ethers.getContractFactory("Bullish");
-    bullish = await bullishArtifact.deploy(
-      bullas.address,
-      treasury.address,
-      developer.address
-    );
-    console.log("- Bullish Initialized");
-
     const moolaArtifact = await ethers.getContractFactory("Moola");
     moola = await moolaArtifact.deploy();
     console.log("- Moola Initialized");
 
     const factoryArtifact = await ethers.getContractFactory("Factory");
-    factory = await factoryArtifact.deploy(moola.address, bullish.address);
+    factory = await factoryArtifact.deploy(moola.address, bullas.address);
     console.log("- Factory Initialized");
 
     const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
@@ -68,7 +60,7 @@ describe("local: test0", function () {
       developer.address,
       factory.address,
       moola.address,
-      bullish.address,
+      bullas.address,
       vaultFactory.address
     );
     console.log("- Plugin Initialized");
@@ -78,7 +70,7 @@ describe("local: test0", function () {
       base.address,
       moola.address,
       factory.address,
-      bullish.address,
+      bullas.address,
       plugin.address,
       AddressZero
     );
@@ -95,34 +87,17 @@ describe("local: test0", function () {
 
   it("User0 mints a clicker", async function () {
     console.log("******************************************************");
-    await expect(bullish.connect(user0).claim(1)).to.be.reverted;
-    await bullas.connect(user1).mint();
-    await expect(bullish.connect(user0).claim(1)).to.be.revertedWith(
-      "Bullish__NotBullasOwner"
-    );
     await bullas.connect(user0).mint();
-    await expect(bullish.connect(user0).claim(1)).to.be.revertedWith(
-      "Bullish__NotBullasOwner"
-    );
-    await bullish.connect(user0).claim(2);
-    await expect(bullish.connect(user0).claim(2)).to.be.revertedWith(
-      "Bullish__AlreadyClaimed"
-    );
-  });
-
-  it("User0 mints a clicker", async function () {
-    console.log("******************************************************");
+    await bullas.connect(user1).mint();
+    console.log("User0 has ", await bullas.balanceOf(user0.address), " bullas");
     console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
+      "User0 has Token ID: ",
+      await bullas.tokenOfOwnerByIndex(user0.address, 0)
     );
-    await bullish.connect(user1).mint({ value: gamePrice });
-    await bullish.connect(owner).mintBatch(owner.address, 2);
-    await bullish.connect(owner).transferFrom(owner.address, user2.address, 3);
-    await bullish.connect(owner).transferFrom(owner.address, user3.address, 4);
+    console.log("User1 has ", await bullas.balanceOf(user1.address), " bullas");
     console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
+      "User1 has Token ID: ",
+      await bullas.tokenOfOwnerByIndex(user1.address, 0)
     );
   });
 
@@ -299,7 +274,7 @@ describe("local: test0", function () {
 
   it("Get id of owner", async function () {
     console.log("******************************************************");
-    console.log(await bullish.tokenOfOwnerByIndex(user0.address, 0));
+    console.log(await bullas.tokenOfOwnerByIndex(user0.address, 0));
   });
 
   it("Forward 2 hour", async function () {
@@ -505,6 +480,26 @@ describe("local: test0", function () {
     console.log("******************************************************");
     await network.provider.send("evm_increaseTime", [100]);
     await network.provider.send("evm_mine");
+  });
+
+  it("User0 mints a clicker", async function () {
+    console.log("******************************************************");
+    await bullas.connect(user2).mint();
+    console.log("User0 has ", await bullas.balanceOf(user0.address), " bullas");
+    console.log(
+      "User0 has Token ID: ",
+      await bullas.tokenOfOwnerByIndex(user0.address, 0)
+    );
+    console.log("User1 has ", await bullas.balanceOf(user1.address), " bullas");
+    console.log(
+      "User1 has Token ID: ",
+      await bullas.tokenOfOwnerByIndex(user1.address, 0)
+    );
+    console.log("User2 has ", await bullas.balanceOf(user2.address), " bullas");
+    console.log(
+      "User2 has Token ID: ",
+      await bullas.tokenOfOwnerByIndex(user2.address, 0)
+    );
   });
 
   it("everyone clicks cookie", async function () {
@@ -1138,70 +1133,13 @@ describe("local: test0", function () {
     console.log("Size: ", await plugin.count());
   });
 
-  it("Bullish Testing", async function () {
+  it("User0 mints a clicker", async function () {
     console.log("******************************************************");
-    await expect(bullish.connect(user0).setTreasury(user0.address)).to.be
-      .reverted;
-    await bullish.connect(owner).setTreasury(user0.address);
-    await bullish.connect(owner).setTreasury(treasury.address);
-    await expect(
-      bullish.connect(owner).setDeveloper(user0.address)
-    ).to.be.revertedWith("Bullish__NotAuthorized");
-    await bullish.connect(developer).setDeveloper(user0.address);
-    await expect(
-      bullish.connect(developer).setDeveloper(developer.address)
-    ).to.be.revertedWith("Bullish__NotAuthorized");
-    await bullish.connect(user0).setDeveloper(developer.address);
-    await expect(
-      bullish.connect(user0).mint({ value: price2 })
-    ).to.be.revertedWith("Bullish__InsufficientFunds");
-    await expect(bullish.connect(developer).setPrice(0)).to.be.reverted;
-    await bullish.connect(owner).setPrice(price);
-    console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
-    );
-    await expect(
-      bullish.connect(user0).mint({ value: price2 })
-    ).to.be.revertedWith("Bullish__InsufficientFunds");
-    await bullish.connect(user0).mint({ value: price });
-    await bullish.connect(user1).mint({ value: price });
-    await bullish.connect(user2).mint({ value: price });
-    console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
-    );
-    await bullish.connect(owner).setBaseTokenURI("https://www.google.com");
-    console.log(await bullish.tokenURI(1));
-    console.log(await bullish.tokenURI(2));
-    console.log(await bullish.tokenURI(3));
-    await expect(bullish.connect(developer).mintBatch(user0.address, 10)).to.be
-      .reverted;
-    await bullish.connect(owner).mintBatch(user0.address, 10);
-    console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
-    );
-    console.log(
-      "Treasury Balance: ",
-      await ethers.provider.getBalance(treasury.address)
-    );
-    console.log(
-      "Developer Balance: ",
-      await ethers.provider.getBalance(developer.address)
-    );
-    await bullish.connect(owner).withdraw();
-    console.log(
-      "Bullish Balance: ",
-      await ethers.provider.getBalance(bullish.address)
-    );
-    console.log(
-      "Treasury Balance: ",
-      await ethers.provider.getBalance(treasury.address)
-    );
-    console.log(
-      "Developer Balance: ",
-      await ethers.provider.getBalance(developer.address)
-    );
+    await bullas.connect(user4).mint();
+  });
+
+  it("User0 mints a clicker", async function () {
+    console.log("******************************************************");
+    await bullas.connect(user4).mint();
   });
 });

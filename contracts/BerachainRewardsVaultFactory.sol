@@ -29,7 +29,7 @@ contract BerachainRewardsVaultFactory {
     constructor() {
     }
 
-    function createRewardsVault(address vaultToken) external returns (address) {
+    function createRewardVault(address vaultToken) external returns (address) {
         return address(new RewardVault(vaultToken));
     }
 

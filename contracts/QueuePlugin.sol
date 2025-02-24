@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IGauge {
     function _deposit(address account, uint256 amount) external;
@@ -85,7 +86,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     uint256 public entryFee = 0.04269 ether;
     address public treasury;
     address public developer;
-    bool public randomMint = true;
+    bool public autoBribe = true;
 
     struct Click {
         uint256 tokenId;
@@ -104,21 +105,18 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     error Plugin__InvalidZeroInput();
     error Plugin__NotAuthorizedVoter();
     error Plugin__NotAuthorized();
-    error Plugin__InvalidPayment();
     error Plugin__InvalidTokenId();
     error Plugin__InvalidMessage();
-    error Plugin__DeadlinePassed();
-    error Plugin__EpochIdMismatch();
-    error Plugin__ExceedsMaxPayment();
 
     /*----------  EVENTS ------------------------------------------------*/
 
-    event Plugin__ClaimedAnDistributed();
-    event Plugin__ClickAdded(uint256 tokenId, address author, uint256 power, string message);
+    event Plugin__ClaimedAndDistributed(uint256 balance);
+    event Plugin__ClickAdded(uint256 tokenId, address author, uint256 mintAmount, uint256 power, string message);
     event Plugin__ClickRemoved(uint256 tokenId, address author, uint256 power, string message);
     event Plugin__TreasurySet(address treasury);
     event Plugin__DeveloperSet(address developer);
     event Plugin__EntryFeeSet(uint256 fee);
+    event Plugin__AutoBribeSet(bool autoBribe);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -170,10 +168,15 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             uint256 treasuryFee = balance / 5;
             token.safeTransfer(treasury, treasuryFee * 3 / 5);
             token.safeTransfer(developer, treasuryFee * 2 / 5);
-            token.safeApprove(bribe, 0);
-            token.safeApprove(bribe, balance - treasuryFee);
-            IBribe(bribe).notifyRewardAmount(address(token), balance - treasuryFee);
+             if (autoBribe) {            
+                token.safeApprove(bribe, 0);
+                token.safeApprove(bribe, balance - treasuryFee);
+                IBribe(bribe).notifyRewardAmount(address(token), balance - treasuryFee);
+            } else {
+                token.safeTransfer(treasury, balance - treasuryFee);
+            }
         }
+        emit Plugin__ClaimedAndDistributed(balance);
     }
 
     function click(uint256 tokenId, string calldata message)         
@@ -199,12 +202,13 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             head = (head + 1) % QUEUE_SIZE;
         }
 
-        uint256 power = getPower(tokenId);
-        mintAmount = randomMint ? power * getRandomMultiplier() : power;
+        (uint256 amount, uint256 power) = getPower(tokenId);
+        mintAmount = amount;
+
         queue[currentIndex] = Click(tokenId, power, account, message);
         tail = (tail + 1) % QUEUE_SIZE;
         count = count < QUEUE_SIZE ? count + 1 : count;
-        emit Plugin__ClickAdded(tokenId, account, queue[currentIndex].power, message);
+        emit Plugin__ClickAdded(tokenId, account, mintAmount, queue[currentIndex].power, message);
 
         token.safeTransferFrom(msg.sender, address(this), entryFee);
         
@@ -236,8 +240,9 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         emit Plugin__EntryFeeSet(_entryFee);
     }
 
-    function setRandomMint(bool _randomMint) external onlyOwner {
-        randomMint = _randomMint;
+    function setAutoBribe(bool _autoBribe) external onlyOwner {
+        autoBribe = _autoBribe;
+        emit Plugin__AutoBribeSet(_autoBribe);
     }
 
     function setGauge(address _gauge) external onlyVoter {
@@ -246,25 +251,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     function setBribe(address _bribe) external onlyVoter {
         bribe = _bribe;
-    }
-
-    function getRandomMultiplier() internal view returns (uint256) {
-        uint256 random = uint256(keccak256(abi.encodePacked(
-            block.timestamp,
-            block.prevrandao,
-            msg.sender
-        ))) % 100; 
-        if (random < 80) {
-            return 1;
-        } else if (random < 90) {
-            return 2;
-        } else if (random < 96) {
-            return 3;
-        } else if (random < 99) {
-            return 5;
-        } else {
-            return 10;
-        }
     }
 
     /*----------  VIEW FUNCTIONS  ---------------------------------------*/
@@ -321,8 +307,9 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         return rewardVault;
     }
 
-    function getPower(uint256 tokenId) public view returns (uint256) {
-        return BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
+    function getPower(uint256 tokenId) public view returns (uint256 amount, uint256 power) {
+        amount = BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
+        power = amount;
     }
 
     function getQueueSize() public view returns (uint256) {
