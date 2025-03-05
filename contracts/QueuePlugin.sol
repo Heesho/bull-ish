@@ -55,6 +55,7 @@ contract VaultToken is ERC20, Ownable {
 
 contract QueuePlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     /*----------  CONSTANTS  --------------------------------------------*/
 
@@ -76,16 +77,17 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     address[] private assetTokens;
     address[] private bribeTokens;
 
-    address public immutable units;
-    address public immutable factory;
     address public immutable key;
-
     address public immutable vaultToken;
     address public immutable rewardVault;
 
-    uint256 public entryFee = 0.04269 ether;
+    address public factory;
+    address public units;
     address public treasury;
     address public developer;
+
+    uint256 public maxPower = 1 ether;
+    uint256 public entryFee = 0.04269 ether;
     bool public autoBribe = true;
 
     struct Click {
@@ -115,8 +117,11 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     event Plugin__ClickRemoved(uint256 tokenId, address author, uint256 power, string message);
     event Plugin__TreasurySet(address treasury);
     event Plugin__DeveloperSet(address developer);
+    event Plugin__FactorySet(address factory);
+    event Plugin__UnitsSet(address units);
     event Plugin__EntryFeeSet(uint256 fee);
     event Plugin__AutoBribeSet(bool autoBribe);
+    event Plugin__MaxPowerSet(uint256 maxPower);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -182,7 +187,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     function click(uint256 tokenId, string calldata message)         
         public
         nonReentrant 
-        returns (uint256 mintAmount)
+        returns (uint256)
     {
         if (bytes(message).length == 0) revert Plugin__InvalidMessage();
         if (bytes(message).length > MESSAGE_LENGTH) revert Plugin__InvalidMessage();
@@ -202,13 +207,12 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             head = (head + 1) % QUEUE_SIZE;
         }
 
-        (uint256 amount, uint256 power) = getPower(tokenId);
-        mintAmount = amount;
+        (uint256 upc, uint256 power) = getPower(tokenId);
 
         queue[currentIndex] = Click(tokenId, power, account, message);
         tail = (tail + 1) % QUEUE_SIZE;
         count = count < QUEUE_SIZE ? count + 1 : count;
-        emit Plugin__ClickAdded(tokenId, account, mintAmount, queue[currentIndex].power, message);
+        emit Plugin__ClickAdded(tokenId, account, upc, queue[currentIndex].power, message);
 
         token.safeTransferFrom(msg.sender, address(this), entryFee);
         
@@ -219,7 +223,8 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         IERC20(vaultToken).safeApprove(rewardVault, queue[currentIndex].power);
         IRewardVault(rewardVault).delegateStake(account, queue[currentIndex].power);
 
-        IUnits(units).mint(account, mintAmount);
+        IUnits(units).mint(account, upc);
+        return upc;
     }
 
     /*----------  RESTRICTED FUNCTIONS  ---------------------------------*/
@@ -233,6 +238,21 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         if (msg.sender != developer) revert Plugin__NotAuthorized();
         developer = _developer;
         emit Plugin__DeveloperSet(_developer);
+    }
+
+    function setFactory(address _factory) external onlyOwner {
+        factory = _factory;
+        emit Plugin__FactorySet(_factory);
+    }
+
+    function setUnits(address _units) external onlyOwner {
+        units = _units;
+        emit Plugin__UnitsSet(_units);
+    }
+
+    function setMaxPower(uint256 _maxPower) external onlyOwner {
+        maxPower = _maxPower;
+        emit Plugin__MaxPowerSet(_maxPower);
     }
 
     function setEntryFee(uint256 _entryFee) external onlyOwner {
@@ -307,9 +327,12 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         return rewardVault;
     }
 
-    function getPower(uint256 tokenId) public view returns (uint256 amount, uint256 power) {
-        amount = BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
-        power = amount;
+    function getPower(uint256 tokenId) public view returns (uint256 upc, uint256 power) {
+        upc = BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
+        power = (upc * 1e18).sqrt();
+        if (power > maxPower) {
+            power = maxPower;
+        }
     }
 
     function getQueueSize() public view returns (uint256) {

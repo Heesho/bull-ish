@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Moola is ERC20, Ownable {
 
-    bool public transferrable = false;
+    bool public transferable = false;
     mapping(address => bool) public minters;
     mapping(address => bool) public transferWhitelist;
 
@@ -14,7 +14,7 @@ contract Moola is ERC20, Ownable {
     error Moola__NonTransferable();
 
     event Moola__MinterSet(address minter, bool flag);
-    event Moola__TransferrableSet(bool transferrable);
+    event Moola__TransferableSet(bool transferable);
     event Moola__Minted(address account, uint256 amount);
     event Moola__Burned(address account, uint256 amount);
     event Moola__TransferWhitelisted(address account, bool flag);
@@ -41,12 +41,12 @@ contract Moola is ERC20, Ownable {
         emit Moola__MinterSet(minter, flag);
     }
 
-    function setTransferrable(bool _transferrable) external onlyOwner {
-        transferrable = _transferrable;
-        emit Moola__TransferrableSet(_transferrable);
+    function setTransferable(bool _transferable) external onlyOwner {
+        transferable = _transferable;
+        emit Moola__TransferableSet(_transferable);
     }
 
-    function setTransferWhitelisted(address account, bool flag) external onlyOwner {
+    function setTransferWhitelist(address account, bool flag) external onlyOwner {
         transferWhitelist[account] = flag;
         emit Moola__TransferWhitelisted(account, flag);
     }
@@ -57,7 +57,7 @@ contract Moola is ERC20, Ownable {
     {
         super._beforeTokenTransfer(from, to, amount);
         if (from != address(0) && to != address(0)) {
-            if (!transferrable && !transferWhitelist[from]) {
+            if (!transferable && !transferWhitelist[from]) {
                 revert Moola__NonTransferable();
             }
         }

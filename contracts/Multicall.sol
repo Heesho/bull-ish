@@ -28,7 +28,7 @@ interface IFactory {
 interface IQueuePlugin {
     function click(uint256 tokenId, string calldata message) external returns (uint256 mintAmount);
     function getPrice() external view returns (uint256);
-    function getPower(uint256 tokenId) external view returns (uint256);
+    function getPower(uint256 tokenId) external view returns (uint256 upc, uint256 power);
     function getGauge() external view returns (address);
 }
 
@@ -63,6 +63,7 @@ contract Multicall {
         uint256 unitsBalance;
         uint256 ups;
         uint256 upc;
+        uint256 power;
         uint256 capacity;
         uint256 claimable;
         bool full;
@@ -123,7 +124,7 @@ contract Multicall {
     function getFactory(uint256 tokenId) external view returns (FactoryState memory factoryState) {
         factoryState.unitsBalance = IERC20(units).balanceOf(IERC721(key).ownerOf(tokenId));
         factoryState.ups = IFactory(factory).tokenId_Ups(tokenId);
-        factoryState.upc = IQueuePlugin(plugin).getPower(tokenId);
+        (factoryState.upc, factoryState.power) = IQueuePlugin(plugin).getPower(tokenId);
         uint256 amount = factoryState.ups * (block.timestamp - IFactory(factory).tokenId_Last(tokenId));
         factoryState.capacity = factoryState.ups * DURATION;
         factoryState.claimable = amount >= factoryState.capacity ? factoryState.capacity : amount;
