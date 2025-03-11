@@ -173,7 +173,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             uint256 treasuryFee = balance / 5;
             token.safeTransfer(treasury, treasuryFee * 3 / 5);
             token.safeTransfer(developer, treasuryFee * 2 / 5);
-             if (autoBribe) {            
+            if (autoBribe) {            
                 token.safeApprove(bribe, 0);
                 token.safeApprove(bribe, balance - treasuryFee);
                 IBribe(bribe).notifyRewardAmount(address(token), balance - treasuryFee);
