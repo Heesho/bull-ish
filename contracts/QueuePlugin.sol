@@ -180,8 +180,8 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             } else {
                 token.safeTransfer(treasury, balance - treasuryFee);
             }
+            emit Plugin__ClaimedAndDistributed(balance);
         }
-        emit Plugin__ClaimedAndDistributed(balance);
     }
 
     function click(uint256 tokenId, string calldata message)         
