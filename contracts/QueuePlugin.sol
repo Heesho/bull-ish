@@ -17,7 +17,6 @@ interface IGauge {
 
 interface IBribe {
     function notifyRewardAmount(address token, uint amount) external;
-    function DURATION() external view returns (uint);
 }
 
 interface IVoter {
