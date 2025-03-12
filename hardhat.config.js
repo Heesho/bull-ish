@@ -33,14 +33,14 @@ module.exports = {
   etherscan: {
     apiKey: SCAN_API_KEY,
     customChains: [
-      // {
-      //   network: "berachain",
-      //   chainId: CHAIN_ID,
-      //   urls: {
-      //     apiURL: "https://api.berascan.com/api",
-      //     browserURL: "https://berascan.com/",
-      //   },
-      // },
+      {
+        network: "berachain",
+        chainId: 80094,
+        urls: {
+          apiURL: "https://api.berascan.com/api",
+          browserURL: "https://berascan.com/",
+        },
+      },
       {
         network: "berachain_bepolia",
         chainId: 80069,
