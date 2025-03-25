@@ -1485,6 +1485,11 @@ describe("local: test0", function () {
     });
   });
 
+  it("Claim and Distribute", async function () {
+    console.log("******************************************************");
+    await plugin.claimAndDistribute();
+  });
+
   it("Queue Data", async function () {
     console.log("******************************************************");
     console.log("Head: ", await plugin.head());
@@ -1551,6 +1556,11 @@ describe("local: test0", function () {
     await multicall2.connect(user2).click(3, 10, "this is a message", {
       value: ten,
     });
+  });
+
+  it("Claim and Distribute", async function () {
+    console.log("******************************************************");
+    await plugin.claimAndDistribute();
   });
 
   it("Queue Data", async function () {
@@ -1659,6 +1669,11 @@ describe("local: test0", function () {
     });
   });
 
+  it("Claim and Distribute", async function () {
+    console.log("******************************************************");
+    await plugin.claimAndDistribute();
+  });
+
   it("Queue Data", async function () {
     console.log("******************************************************");
     console.log("Head: ", await plugin.head());
@@ -1724,6 +1739,11 @@ describe("local: test0", function () {
     await multicall2.connect(user2).click(3, 100, "this is a message", {
       value: oneHundred,
     });
+  });
+
+  it("Claim and Distribute", async function () {
+    console.log("******************************************************");
+    await plugin.claimAndDistribute();
   });
 
   it("Queue Data", async function () {
