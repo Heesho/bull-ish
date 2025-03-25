@@ -8,6 +8,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @notice Interface to interact with a Gauge contract.
+ *         Typically, Gauges manage deposits/withdrawals of tokens and track user balances
+ *         for liquidity mining or other incentives.
+ */
 interface IGauge {
     function _deposit(address account, uint256 amount) external;
     function _withdraw(address account, uint256 amount) external;
@@ -15,38 +20,83 @@ interface IGauge {
     function totalSupply() external view returns (uint256);
 }
 
+/**
+ * @notice Interface to interact with a Bribe contract.
+ *         The `notifyRewardAmount` function signals that new rewards are available for distribution.
+ */
 interface IBribe {
     function notifyRewardAmount(address token, uint amount) external;
 }
 
+/**
+ * @notice Interface for the "voter" system that the plugin hooks into.
+ *         The plugin needs to know the address of the "oTOKEN" for bribes/rewards.
+ */
 interface IVoter {
     function OTOKEN() external view returns (address);
 }
 
+/**
+ * @notice Interface for a factory that records how many “ups” each token ID has.
+ *         This is used to calculate a player’s spank power (based on `tokenId_Ups`).
+ */
 interface IFactory {
     function tokenId_Ups(uint256 tokenId) external view returns (uint256);
 }
 
+/**
+ * @notice Interface to the “Units” system that can mint additional in-game currency/units for the user.
+ */
 interface IUnits {
     function mint(address account, uint256 amount) external;
 }
 
+/**
+ * @notice Interface to a factory responsible for creating reward vaults.
+ *         Each vault is specialized for a given vaultToken (like our `VaultToken`).
+ */
 interface IBerachainRewardVaultFactory {
     function createRewardVault(address _vaultToken) external returns (address);
 }
 
+/**
+ * @notice Interface to a reward vault where we can delegate staking and withdrawals.
+ *         Ties into Berachain’s PoL system for distributing extra rewards.
+ */
 interface IRewardVault {
     function delegateStake(address account, uint256 amount) external;
     function delegateWithdraw(address account, uint256 amount) external;
 }
 
+/**
+ * @title VaultToken
+ * @notice A simple ERC20 token used to represent staked positions in the QueuePlugin.
+ *         The QueuePlugin contract mints and burns this token on demand to track
+ *         how much power each user is staking in the breadline.
+ */
 contract VaultToken is ERC20, Ownable {
+
+    /**
+     * @notice Initializes the ERC20 token with a name and symbol.
+     */
     constructor() ERC20("BULL ISH V2", "BULL ISH V2") {}
 
+    /**
+     * @dev Mints new tokens to a specified address.
+     *      Only the owner (QueuePlugin contract) can call this.
+     * @param to The address that will receive the newly minted tokens.
+     * @param amount The number of tokens to mint.
+     */
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 
+    /**
+     * @dev Burns tokens from a specified address.
+     *      Only the owner (QueuePlugin contract) can call this.
+     * @param from The address from which tokens will be burned.
+     * @param amount The number of tokens to burn.
+     */
     function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
     }
@@ -55,44 +105,73 @@ contract VaultToken is ERC20, Ownable {
 /**
  * @title QueuePlugin
  * @author heesho
-*/
+ * @notice This contract manages the “breadline” mechanic: players pay a fee to join a queue (spanking the Bera).
+ *         While in the queue, players earn “oBERO” rewards through the Gauge system. Once the queue is at capacity,
+ *         new spankers displace the oldest ones. Displaced players are withdrawn from the Gauge and lose the spot.
+ * @dev In addition to handling the queue, this contract automates bribing to hiBERO voters using 80% of spank fees.
+ */
 contract QueuePlugin is ReentrancyGuard, Ownable {
-    using SafeERC20 for IERC20;
-    using Math for uint256;
+    using SafeERC20 for IERC20; // Safe wrappers around ERC20 ops that throw on failure
+    using Math for uint256;     // Additional math utilities (like sqrt, etc.)
 
     /*----------  CONSTANTS  --------------------------------------------*/
-
+    // Base units per click for every token ID, used in spank power calculation
     uint256 public constant BASE_UPC = 1 ether;
+    // Maximum number of clicks (spankers) in the queue 
     uint256 public constant QUEUE_SIZE = 300;
+    // Duration for which the plugin collects fees
     uint256 public constant DURATION = 7 days;
+    // Maximum length of the optional message in a spank transaction
     uint256 public constant MESSAGE_LENGTH = 69;
-    
+    // Display strings for the plugin
     string public constant NAME = "BULL ISH V2";
     string public constant PROTOCOL = "Bullas";
 
     /*----------  STATE VARIABLES  --------------------------------------*/
-
+    // The token used for paying the spank fee (BERA)
     IERC20 private immutable token;
+    // The oTOKEN address, derived from the voter contract
     address private immutable OTOKEN;
+    // The voter contract address (Beradrome Voter)
     address private immutable voter;
+    // The Gauge contract linked to this plugin for staking and rewards
     address private gauge;
+    // The Bribe contract linked to this plugin for bribe distribution
     address private bribe;
+    // Array of addresses for asset tokens (WBERA)
     address[] private assetTokens;
+    // Array of addresses for bribe tokens (WBERA)
     address[] private bribeTokens;
-
+    // The NFT (“Key”) used to identify the player (Bullas NFT)
     address public immutable key;
+    // The VaultToken contract representing staked positions (minted/burned by this contract)
     address public immutable vaultToken;
+    // The RewardVault contract created for this specific VaultToken
     address public immutable rewardVault;
 
+    // Factory contract for weapons inventory for a key
     address public factory;
+    // The “Units” contract that can mint in-game currency (Moola) for the user
     address public units;
+
+    // Receivers for fee distribution
     address public treasury;
     address public developer;
 
+    // The maximum spank power allowed per user (cap on sqrt value from ups calculation)
     uint256 public maxPower = 1 ether;
+    // The fee (in BERA) required to spank
     uint256 public entryFee = 0.04269 ether;
+    // Whether or not fees are automatically sent to the bribe contract
     bool public autoBribe = true;
 
+    /**
+     * @notice Represents a single player’s spot in the breadline (queue).
+     *         - `tokenId`: the ID of the Bullas NFT that caused this spank.
+     *         - `power`: the power derived from the NFT’s “ups” used to stake in the Gauge.
+     *         - `account`: the owner of the NFT (and thus the queue spot).
+     *         - `message`: optional short message from the user (onchain).
+     */
     struct Click {
         uint256 tokenId;
         uint256 power;
@@ -100,7 +179,9 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         string message;
     }
 
+    // Circular queue to store the 300 players currently in the breadline
     mapping(uint256 => Click) public queue;
+    // Indices for the circular queue: `head` is the oldest occupant, `tail` is where new occupants are added.
     uint256 public head = 0;
     uint256 public tail = 0;
     uint256 public count = 0;
@@ -128,11 +209,17 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
+    /**
+     * @dev Throws if the input amount is zero. Prevents useless transactions.
+     */
     modifier nonZeroInput(uint256 _amount) {
         if (_amount == 0) revert Plugin__InvalidZeroInput();
         _;
     }
 
+    /**
+     * @dev Restricts certain calls (like gauge or bribe updates) to the voter contract only.
+     */
     modifier onlyVoter() {
         if (msg.sender != voter) revert Plugin__NotAuthorizedVoter();
         _;
@@ -140,6 +227,19 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
+    /**
+     * @notice Deploys the QueuePlugin contract and sets key addresses, creates a vault token and a reward vault.
+     * @param _token The BERA (or main ERC20) token used for fees.
+     * @param _voter The Voter contract (to fetch OTOKEN, set gauge/bribe).
+     * @param _assetTokens Potentially multiple tokens that represent underlying assets for the plugin.
+     * @param _bribeTokens The token(s) used for bribe distribution.
+     * @param _treasury Where a portion of the fees will be directed.
+     * @param _developer The developer address receiving a portion of the fees.
+     * @param _factory The factory contract used to compute "ups" for each NFT token ID.
+     * @param _units The contract that mints in-game currency (Moola).
+     * @param _key The NFT contract address (weapon inventory).
+     * @param _vaultFactory The factory that creates a specialized reward vault for `vaultToken`.
+     */
     constructor(
         address _token,
         address _voter,
@@ -167,6 +267,12 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         rewardVault = IBerachainRewardVaultFactory(_vaultFactory).createRewardVault(address(vaultToken));
     }
 
+    /**
+     * @notice Claims the fees accumulated in this contract, and distributes them:
+     *         - 80% of the fee is used for bribes if `autoBribe == true`.
+     *         - 20% of the fee is split between the treasury and developer.
+     *         If `autoBribe` is disabled, the fee is simply sent to the treasury.
+     */
     function claimAndDistribute() 
         external 
         nonReentrant
@@ -190,6 +296,13 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         }
     }
 
+    /**
+     * @notice A user "clicks" by paying the spank fee. This attempts to place them at the tail of the queue.
+     *         If the queue is full, it removes the user at the head. The user’s NFT ID is used to calculate spank power.
+     * @param tokenId The ID of the NFT (Weapon Inventory) the user owns.
+     * @param message A short message from the user, stored on-chain for fun.
+     * @return upc The amount of "Ups" minted to the user as well as used to track in-game currency.
+     */
     function click(uint256 tokenId, string calldata message)
         public
         nonReentrant
@@ -235,104 +348,178 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /*----------  RESTRICTED FUNCTIONS  ---------------------------------*/
 
+    /**
+     * @notice Owner can update the treasury address.
+     */
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
         emit Plugin__TreasurySet(_treasury);
     }
 
+    /**
+     * @notice Only the current developer can set a new developer address.
+     */
     function setDeveloper(address _developer) external {
         if (msg.sender != developer) revert Plugin__NotAuthorized();
         developer = _developer;
         emit Plugin__DeveloperSet(_developer);
     }
 
+    /**
+     * @notice Owner can update the factory used to look up “ups” for NFTs.
+     */
     function setFactory(address _factory) external onlyOwner {
         factory = _factory;
         emit Plugin__FactorySet(_factory);
     }
 
+    /**
+     * @notice Owner can update the units contract.
+     */
     function setUnits(address _units) external onlyOwner {
         units = _units;
         emit Plugin__UnitsSet(_units);
     }
 
+    /**
+     * @notice Owner can set the maximum allowed spank power per user.
+     */
     function setMaxPower(uint256 _maxPower) external onlyOwner {
         maxPower = _maxPower;
         emit Plugin__MaxPowerSet(_maxPower);
     }
 
+    /**
+     * @notice Owner can update the spank entry fee.
+     */
     function setEntryFee(uint256 _entryFee) external onlyOwner {
         entryFee = _entryFee;
         emit Plugin__EntryFeeSet(_entryFee);
     }
 
+    /**
+     * @notice Owner can switch off/on auto-bribing functionality.
+     */
     function setAutoBribe(bool _autoBribe) external onlyOwner {
         autoBribe = _autoBribe;
         emit Plugin__AutoBribeSet(_autoBribe);
     }
 
+    /**
+     * @notice Only the voter contract can set the gauge address.
+     */
     function setGauge(address _gauge) external onlyVoter {
         gauge = _gauge;
     }
 
+    /**
+     * @notice Only the voter contract can set the bribe address.
+     */
     function setBribe(address _bribe) external onlyVoter {
         bribe = _bribe;
     }
 
     /*----------  VIEW FUNCTIONS  ---------------------------------------*/
 
+    /**
+     * @return The cost (in BERA) to spank/join the queue.
+     */
     function getPrice() external view returns (uint256) {
         return entryFee;
     }
 
+    /**
+     * @notice Queries how much power a particular address has staked in the gauge.
+     */
     function balanceOf(address account) public view returns (uint256) {
         return IGauge(gauge).balanceOf(account);
     }
 
+    /**
+     * @notice Returns the total staked power in the gauge.
+     */
     function totalSupply() public view returns (uint256) {
         return IGauge(gauge).totalSupply();
     }
 
+    /**
+     * @return Address of the ERC20 token used for spank fees.
+     */
     function getToken() public view virtual returns (address) {
         return address(token);
     }
 
+    /**
+     * @return Returns a protocol name string for display in the UI.
+     */
     function getProtocol() public view virtual returns (string memory) {
         return PROTOCOL;
     }
 
+    /**
+     * @return Returns a plugin name string.
+     */
     function getName() public view virtual returns (string memory) {
         return NAME;
     }
 
+    /**
+     * @return The voter contract address.
+     */
     function getVoter() public view returns (address) {
         return voter;
     }
 
+    /**
+     * @return The gauge contract address used for staking power.
+     */
     function getGauge() public view returns (address) {
         return gauge;
     }
 
+    /**
+     * @return The bribe contract address used to distribute bribes to hiBERO voters.
+     */
     function getBribe() public view returns (address) {
         return bribe;
     }
 
+    /**
+     * @return The list of asset tokens associated with this plugin.
+     */
     function getAssetTokens() public view virtual returns (address[] memory) {
         return assetTokens;
     }
 
+    /**
+     * @return The list of bribe tokens used when calling `notifyRewardAmount`.
+     */
     function getBribeTokens() public view returns (address[] memory) {
         return bribeTokens;
     }
 
+    /**
+     * @return The address of the VaultToken contract used in this plugin.
+     */
     function getVaultToken() public view returns (address) {
         return vaultToken;
     }
 
+    /**
+     * @return The address of the specialized RewardVault contract tied to our vaultToken.
+     */
     function getRewardVault() public view returns (address) {
         return rewardVault;
     }
 
+    /**
+     * @notice Computes the “upc” and “power” for a given NFT tokenId.
+     *         - `upc` is base + additional ups from the factory contract.
+     *         - `power` is sqrt(upc * 1e18), then capped by `maxPower`.
+     * @param tokenId The NFT’s ID.
+     * @return upc The computed units per click.
+     * @return power The sqrt(upc * 1e18), capped by `maxPower`.
+     */
     function getPower(uint256 tokenId) public view returns (uint256 upc, uint256 power) {
         upc = BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
         power = (upc * 1e18).sqrt();
@@ -341,14 +528,27 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         }
     }
 
+    /**
+     * @return How many occupants are currently in the queue.
+     */
     function getQueueSize() public view returns (uint256) {
         return count;
     }
 
+    /**
+     * @notice Returns the Click struct for a given index in the circular buffer.
+     * @param index The queue index (0-based from the head).
+     */
     function getClick(uint256 index) public view returns (Click memory) {
         return queue[(head + index) % QUEUE_SIZE];
     }
 
+    /**
+     * @notice Returns a slice of the queue from `start` to `end` (exclusive).
+     * @param start The starting index (0-based from head).
+     * @param end The end index (exclusive, 0-based from head).
+     * @return An array of Click structs in the specified range.
+     */
     function getQueueFragment(uint256 start, uint256 end) public view returns (Click[] memory) {
         Click[] memory result = new Click[](end - start);
         for (uint256 i = start; i < end; i++) {
@@ -357,6 +557,9 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         return result;
     }
 
+    /**
+     * @notice Returns the entire queue (all `count` occupants) as an array of Click structs.
+     */
     function getQueue() public view returns (Click[] memory) {
         Click[] memory result = new Click[](count);
         for (uint256 i = 0; i < count; i++) {
