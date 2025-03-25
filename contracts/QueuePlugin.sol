@@ -52,6 +52,10 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
+/**
+ * @title QueuePlugin
+ * @author heesho
+*/
 contract QueuePlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
     using Math for uint256;

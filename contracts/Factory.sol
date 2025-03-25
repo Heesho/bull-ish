@@ -10,6 +10,10 @@ interface IUnits {
     function burn(address account, uint256 amount) external;
 }
 
+/**
+ * @title Factory
+ * @author heesho
+*/
 contract Factory is ReentrancyGuard, Ownable {
 
     /*----------  CONSTANTS  --------------------------------------------*/
