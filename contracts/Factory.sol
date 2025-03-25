@@ -85,16 +85,18 @@ contract Factory is ReentrancyGuard, Ownable {
     function purchaseTool(uint256 tokenId, uint256 toolId, uint256 toolAmount) external nonReentrant tokenExists(tokenId) {
         if (toolAmount == 0) revert Factory__InvalidInput();
         claim(tokenId);
+        uint256 cost = 0;
         for (uint256 i = 0; i < toolAmount; i++) {
             uint256 currentAmount = tokenId_toolId_Amount[tokenId][toolId];
             if (currentAmount == amountIndex) revert Factory__AmountMaxed();
-            uint256 cost = getToolCost(toolId, currentAmount);
-            if (cost == 0) revert Factory__ToolDoesNotExist();
+            uint256 unitCost = getToolCost(toolId, currentAmount);
+            cost += unitCost;
+            if (unitCost == 0) revert Factory__ToolDoesNotExist();
             tokenId_toolId_Amount[tokenId][toolId]++;
             tokenId_Ups[tokenId] += getToolUps(toolId, tokenId_toolId_Lvl[tokenId][toolId]);
-            emit Factory__ToolPurchased(tokenId, toolId, tokenId_toolId_Amount[tokenId][toolId], cost, tokenId_Ups[tokenId]);
-            IUnits(units).burn(msg.sender, cost);
+            emit Factory__ToolPurchased(tokenId, toolId, tokenId_toolId_Amount[tokenId][toolId], unitCost, tokenId_Ups[tokenId]);
         }
+        IUnits(units).burn(msg.sender, cost);
     }
 
     function upgradeTool(uint256 tokenId, uint256 toolId) external nonReentrant tokenExists(tokenId) {

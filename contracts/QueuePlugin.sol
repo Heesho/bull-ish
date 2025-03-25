@@ -41,7 +41,7 @@ interface IRewardVault {
 }
 
 contract VaultToken is ERC20, Ownable {
-    constructor() ERC20("BULL ISH", "BULL ISH") {}
+    constructor() ERC20("BULL ISH V2", "BULL ISH V2") {}
 
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
@@ -63,7 +63,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     uint256 public constant DURATION = 7 days;
     uint256 public constant MESSAGE_LENGTH = 69;
     
-    string public constant NAME = "BULL ISH";
+    string public constant NAME = "BULL ISH V2";
     string public constant PROTOCOL = "Bullas";
 
     /*----------  STATE VARIABLES  --------------------------------------*/
@@ -111,7 +111,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /*----------  EVENTS ------------------------------------------------*/
 
-    event Plugin__ClaimedAndDistributed(uint256 balance);
+    event Plugin__ClaimedAndDistributed(uint256 bribeFee, uint256 treasuryFee, uint256 developerFee);
     event Plugin__ClickAdded(uint256 tokenId, address author, uint256 mintAmount, uint256 power, string message);
     event Plugin__ClickRemoved(uint256 tokenId, address author, uint256 power, string message);
     event Plugin__TreasurySet(address treasury);
@@ -137,10 +137,10 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     /*----------  FUNCTIONS  --------------------------------------------*/
 
     constructor(
-        address _token,                         // WBERA
-        address _voter, 
-        address[] memory _assetTokens,          // [WBERA]
-        address[] memory _bribeTokens,          // [WBERA]
+        address _token,
+        address _voter,
+        address[] memory _assetTokens,
+        address[] memory _bribeTokens,
         address _treasury,
         address _developer,
         address _factory,
@@ -169,23 +169,26 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     {
         uint256 balance = token.balanceOf(address(this));
         if (balance > DURATION) {
-            uint256 treasuryFee = balance / 5;
-            token.safeTransfer(treasury, treasuryFee * 3 / 5);
-            token.safeTransfer(developer, treasuryFee * 2 / 5);
+            uint256 fee = balance / 5;
+            uint256 treasuryFee = fee * 3 / 5;
+            uint256 developerFee = fee - treasuryFee;
+            token.safeTransfer(treasury, treasuryFee);
+            token.safeTransfer(developer, developerFee);
             if (autoBribe) {            
                 token.safeApprove(bribe, 0);
-                token.safeApprove(bribe, balance - treasuryFee);
-                IBribe(bribe).notifyRewardAmount(address(token), balance - treasuryFee);
+                token.safeApprove(bribe, balance - fee);
+                IBribe(bribe).notifyRewardAmount(address(token), balance - fee);
+                emit Plugin__ClaimedAndDistributed(balance - fee, treasuryFee, developerFee);
             } else {
-                token.safeTransfer(treasury, balance - treasuryFee);
+                token.safeTransfer(treasury, balance - fee);
+                emit Plugin__ClaimedAndDistributed(0, balance + treasuryFee - fee, developerFee);
             }
-            emit Plugin__ClaimedAndDistributed(balance);
         }
     }
 
-    function click(uint256 tokenId, string calldata message)         
+    function click(uint256 tokenId, string calldata message)
         public
-        nonReentrant 
+        nonReentrant
         returns (uint256)
     {
         if (bytes(message).length == 0) revert Plugin__InvalidMessage();

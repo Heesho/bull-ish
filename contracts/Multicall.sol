@@ -85,6 +85,8 @@ contract Multicall {
         bool maxed;
     }
 
+    error Multicall__InvalidPayment();
+
     constructor(address _base, address _units, address _factory, address _key, address _plugin, address _oBERO) {
         base = _base;
         units = _units;
@@ -96,6 +98,7 @@ contract Multicall {
 
     function click(uint256 tokenId, uint256 amount, string calldata message) external payable returns (uint256 mintAmount) {
         uint256 price = IQueuePlugin(plugin).getPrice() * amount;
+        if (msg.value != price) revert Multicall__InvalidPayment();
         IWBERA(base).deposit{value: price}();
         IERC20(base).safeApprove(plugin, 0);
         IERC20(base).safeApprove(plugin, price);
