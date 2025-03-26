@@ -30,15 +30,15 @@ async function getContracts() {
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0xd7ea36ECA1cA3E73bC262A6D05DB01E60AE4AD47"
+    "0x716991dFBb0D7935331a59DfEcbF4f23feECb93C"
   );
   plugin = await ethers.getContractAt(
     "contracts/QueuePlugin.sol:QueuePlugin",
-    "0xe2719e4C3AC97890b2AF3783A3B892c3a6FF041C"
+    "0x436B9a684b6f26B34E9c353De05A0454b7996900"
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x6DE64633c9a5beCDde6c5Dc27dfF308F05F56665"
+    "0x57d24e1dbc6c0A9c76A97c6605b8d028BFeFC5c3"
   );
   console.log("Contracts Retrieved");
 }
@@ -385,27 +385,27 @@ async function main() {
 
   await getContracts();
 
-  //   await deployMoola();
-  //   await deployBullas();
-  //   await deployFactory();
-  //   await deployPlugin();
-  //   await deployMulticall();
-  //   await printDeployment();
+  // await deployMoola();
+  // await deployBullas();
+  // await deployFactory();
+  // await deployPlugin();
+  // await deployMulticall();
+  // await printDeployment();
 
-  //   await verifyMoola();
-  //   await verifyBullas();
-  //   await verifyFactory();
-  //   await verifyPlugin();
-  //   await verifyMulticall();
+  // await verifyMoola();
+  // await verifyBullas();
+  // await verifyFactory();
+  // await verifyPlugin();
+  // await verifyMulticall();
 
-  //   await setUpSystem(wallet);
-  //   await setTools(wallet);
-  //   await setToolMultipliers(wallet);
-  //   await setLevels(wallet);
+  // await setUpSystem(wallet);
+  // await setTools(wallet);
+  // await setToolMultipliers(wallet);
+  // await setLevels(wallet);
 
-  //   await transferOwnership(wallet);
+  // await transferOwnership(wallet);
 
-  //   await plugin.setEntryFee("4269000000000000");
+  // await plugin.setEntryFee("4269000000000000");
 
   console.log();
 }
