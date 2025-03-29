@@ -13,7 +13,7 @@ const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
 const VAULT_FACTORY_ADDRESS = "0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8";
 const BULLAS_ADDRESS = "0x333814f5E16EEE61d0c0B03a5b6ABbD424B381c2";
 const DEVELOPER_ADDRESS = "0x2e4c3da66Da4100185Ed0Afdd059865aC1e787C3";
-const MULTISIG_ADDRESS = "0x83C0d763Ea742166485688BdC06fd155cba29075";
+const MULTISIG_ADDRESS = "0x2b6662e3d09efE0E17A46F68eb073F2fD58c53Fa";
 
 // Contract Variables
 let moola, factory, plugin, multicall;
@@ -22,22 +22,22 @@ let moola, factory, plugin, multicall;
 /*===========================  CONTRACT DATA  =======================*/
 
 async function getContracts() {
-  // moola = await ethers.getContractAt(
-  //   "contracts/Moola.sol:Moola",
-  //   ""
-  // );
-  // factory = await ethers.getContractAt(
-  //   "contracts/Factory.sol:Factory",
-  //   ""
-  // );
-  // plugin = await ethers.getContractAt(
-  //   "contracts/QueuePlugin.sol:QueuePlugin",
-  //   ""
-  // );
-  // multicall = await ethers.getContractAt(
-  //   "contracts/Multicall.sol:Multicall",
-  //   ""
-  // );
+  moola = await ethers.getContractAt(
+    "contracts/Moola.sol:Moola",
+    "0x3161BeEc360162c6dda803f7F4BC59Fc92117642"
+  );
+  factory = await ethers.getContractAt(
+    "contracts/Factory.sol:Factory",
+    "0x562DEf36D2BA2907A6c048b0D71ea36951442DD8"
+  );
+  plugin = await ethers.getContractAt(
+    "contracts/QueuePlugin.sol:QueuePlugin",
+    "0x784bb8fA1Db3413A1E98250fdce9Ddb7Eaf4BB0d"
+  );
+  multicall = await ethers.getContractAt(
+    "contracts/Multicall.sol:Multicall",
+    "0xE3b7d612941eCEA06251667BcBc4d398eA943bc4"
+  );
   console.log("Contracts Retrieved");
 }
 
@@ -350,9 +350,6 @@ async function transferOwnership(wallet) {
   await moola.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
   console.log("Moola ownership transferred to multisig");
   await sleep(5000);
-  await bullish.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
-  console.log("Bullish ownership transferred to multisig");
-  await sleep(5000);
   await factory.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
   console.log("Factory ownership transferred to multisig");
   await sleep(5000);
@@ -371,10 +368,9 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  // await printDeployment();
+  await printDeployment();
 
   // await verifyMoola();
-  // await verifyBullish();
   // await verifyFactory();
   // await verifyPlugin();
   // await verifyMulticall();
@@ -385,8 +381,6 @@ async function main() {
   // await setLevels(wallet);
 
   // await transferOwnership(wallet);
-
-  // await plugin.setEntryFee("42690000000000000");
 
   console.log();
 }
