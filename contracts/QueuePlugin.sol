@@ -161,7 +161,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     // The maximum spank power allowed per user (cap on sqrt value from ups calculation)
     uint256 public maxPower = 1 ether;
     // The fee (in BERA) required to spank
-    uint256 public entryFee = 0.04269 ether;
+    uint256 public entryFee = 0.69 ether;
     // Whether or not fees are automatically sent to the bribe contract
     bool public autoBribe = true;
 
