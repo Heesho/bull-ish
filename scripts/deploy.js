@@ -403,7 +403,9 @@ async function main() {
   // await transferOwnership(wallet);
 
   // await deployMoolaClaim();
-  await verifyMoolaClaim();
+  // await verifyMoolaClaim();
+
+  await claim.setClaims(CLAIMS, AMOUNTS);
 
   // await hre.run("verify:verify", {
   //   address: "0xdDD3Ea5De9c70973E224D938B8f392EC4CC0171C",
