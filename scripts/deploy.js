@@ -17,6 +17,7 @@ const MULTISIG_ADDRESS = "0x2b6662e3d09efE0E17A46F68eb073F2fD58c53Fa";
 
 // Contract Variables
 let moola, factory, plugin, multicall;
+let claim;
 
 /*===================================================================*/
 /*===========================  CONTRACT DATA  =======================*/
@@ -37,6 +38,10 @@ async function getContracts() {
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
     "0xE3b7d612941eCEA06251667BcBc4d398eA943bc4"
+  );
+  claim = await ethers.getContractAt(
+    "contracts/MoolaClaim.sol:MoolaClaim",
+    "0xf5f668D359c9fFe7E3B473ec409d4b5b3A03409d"
   );
   console.log("Contracts Retrieved");
 }
@@ -357,6 +362,21 @@ async function transferOwnership(wallet) {
   console.log("Plugin ownership transferred to multisig");
 }
 
+async function deployMoolaClaim() {
+  console.log("Starting Moola Claim Deployment");
+  const moolaClaimArtifact = await ethers.getContractFactory("MoolaClaim");
+  const moolaClaimContract = await moolaClaimArtifact.deploy(moola.address);
+  claim = await moolaClaimContract.deployed();
+  console.log("Moola Claim Deployed at:", claim.address);
+}
+
+async function verifyMoolaClaim() {
+  await hre.run("verify:verify", {
+    address: claim.address,
+    constructorArguments: [moola.address],
+  });
+}
+
 async function main() {
   const [wallet] = await ethers.getSigners();
 
@@ -368,7 +388,7 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  await printDeployment();
+  // await printDeployment();
 
   // await verifyMoola();
   // await verifyFactory();
@@ -381,6 +401,13 @@ async function main() {
   // await setLevels(wallet);
 
   // await transferOwnership(wallet);
+
+  // await deployMoolaClaim();
+  await verifyMoolaClaim();
+
+  // await hre.run("verify:verify", {
+  //   address: "0xdDD3Ea5De9c70973E224D938B8f392EC4CC0171C",
+  // });
 
   console.log();
 }
