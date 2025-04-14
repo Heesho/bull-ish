@@ -131,6 +131,7 @@ contract Factory is ReentrancyGuard, Ownable {
     error Factory__InvalidTokenId();
     error Factory__InvalidLength();
     error Factory__CannotEvolve();
+    error Factory__NotKeyOwner();
     error Factory__ToolDoesNotExist();
 
     /*----------  EVENTS ------------------------------------------------*/
@@ -187,6 +188,7 @@ contract Factory is ReentrancyGuard, Ownable {
      * @param toolAmount How many copies of the tool to buy this transaction.
      */
     function purchaseTool(uint256 tokenId, uint256 toolId, uint256 toolAmount) external nonReentrant tokenExists(tokenId) {
+        if (IERC721(key).ownerOf(tokenId) != msg.sender) revert Factory__NotKeyOwner();
         if (toolAmount == 0) revert Factory__InvalidInput();
         claim(tokenId);
         uint256 cost = 0;
@@ -206,11 +208,12 @@ contract Factory is ReentrancyGuard, Ownable {
     /**
      * @notice Upgrades a specific tool for a given player to the next level.
      *         Requires enough copies of the tool in place to meet the unlock requirement,
-     *         and burns the required Moola.
+     *         and burns the required Moola. 
      * @param tokenId The NFT ID representing the player.
      * @param toolId The tool being upgraded.
      */
     function upgradeTool(uint256 tokenId, uint256 toolId) external nonReentrant tokenExists(tokenId) {
+        if (IERC721(key).ownerOf(tokenId) != msg.sender) revert Factory__NotKeyOwner();
         uint256 currentLvl = tokenId_toolId_Lvl[tokenId][toolId];
         uint256 cost = toolId_BaseCost[toolId] * lvl_CostMultiplier[currentLvl + 1];
         if (cost == 0) revert Factory__LevelMaxed();

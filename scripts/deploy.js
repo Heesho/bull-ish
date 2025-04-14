@@ -25,11 +25,11 @@ let claim;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0x3161BeEc360162c6dda803f7F4BC59Fc92117642"
+    "0x2A3747F9513C0Fd2D480a57d0e46cEf9A7d0775A"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0x562DEf36D2BA2907A6c048b0D71ea36951442DD8"
+    "0x0dB74D6326623eFae36d2456c7830BF38B444389"
   );
   plugin = await ethers.getContractAt(
     "contracts/QueuePlugin.sol:QueuePlugin",
@@ -37,7 +37,7 @@ async function getContracts() {
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0xE3b7d612941eCEA06251667BcBc4d398eA943bc4"
+    "0x5487cB78417Aa5923b80cdCf046a6554CA395874"
   );
   claim = await ethers.getContractAt(
     "contracts/MoolaClaim.sol:MoolaClaim",

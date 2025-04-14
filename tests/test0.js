@@ -7,10 +7,10 @@ const { execPath } = require("process");
 
 const AddressZero = "0x0000000000000000000000000000000000000000";
 const pointZeroOne = convert("0.01", 18);
-const price = convert("0.04269", 18);
-const price2 = convert("0.08538", 18);
-const price10 = convert("0.4269", 18);
-const price100 = convert("4.269", 18);
+const price = convert("0.69", 18);
+const price2 = convert("1.38", 18);
+const price10 = convert("6.9", 18);
+const price100 = convert("69", 18);
 const one = convert("1", 18);
 const ten = convert("10", 18);
 const oneHundred = convert("100", 18);
