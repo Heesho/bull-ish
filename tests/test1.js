@@ -51,7 +51,7 @@ describe("local: test1", function () {
     console.log("- Moola Initialized");
 
     const factoryArtifact = await ethers.getContractFactory("Factory");
-    factory = await factoryArtifact.deploy(moola.address, bullas.address);
+    factory = await factoryArtifact.deploy(moola.address);
     console.log("- Factory Initialized");
 
     const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
@@ -64,7 +64,6 @@ describe("local: test1", function () {
       developer.address,
       factory.address,
       moola.address,
-      bullas.address,
       vaultFactory.address
     );
     console.log("- Plugin Initialized");
@@ -74,7 +73,6 @@ describe("local: test1", function () {
       base.address,
       moola.address,
       factory.address,
-      bullas.address,
       plugin.address,
       AddressZero
     );

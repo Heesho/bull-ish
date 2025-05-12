@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -49,11 +48,6 @@ contract Factory is ReentrancyGuard, Ownable {
      *         Used for minting and burning the in-game currency.
      */
     address immutable public units;
-    /**
-     * @notice Address of the ERC721 "key" contract (e.g. player's Bullas NFT).
-     *         We check ownership of this NFT to ensure only valid players can interact.
-     */
-    address immutable public key;
 
     /**
      * @notice Tracks the current highest "level index."
@@ -99,27 +93,27 @@ contract Factory is ReentrancyGuard, Ownable {
     mapping(uint256 => uint256) public amount_CostMultiplier;   // tool amount => cost multiplier
     
     /**
-     * @notice For each token ID (player inventory), how many units per second it currently generates.
+     * @notice For each account (player), how many units per second it currently generates.
      *         This is the sum of the production from all tools the player owns/levels they have upgraded.
      */
-    mapping(uint256 => uint256) public tokenId_Ups;         // token id => units per second
+    mapping(address => uint256) public account_Ups;         // account => units per second
     /**
-     * @notice For each token ID (player inventory), the last time they claimed their production.
-     *         On claiming, we calculate the difference between the current block time and `tokenId_Last`,
-     *         multiplied by `tokenId_Ups[tokenId]`.
+     * @notice For each account (player), the last time they claimed their production.
+     *         On claiming, we calculate the difference between the current block time and `account_Last`,
+     *         multiplied by `account_Ups[account]`.
      */
-    mapping(uint256 => uint256) public tokenId_Last;        // token id => last time claimed
+    mapping(address => uint256) public account_Last;        // account => last time claimed
 
     /**
      * @notice Tracks how many copies of each tool a player has purchased.
-     *         e.g. `tokenId_toolId_Amount[tokenId][toolId]` = 3 means the player has 3 copies of that tool ID.
+     *         e.g. `account_toolId_Amount[account][toolId]` = 3 means the player has 3 copies of that tool ID.
      */
-    mapping(uint256 => mapping(uint256 => uint256)) public tokenId_toolId_Amount; // token id => tool id => amount
+    mapping(address => mapping(uint256 => uint256)) public account_toolId_Amount; // account => tool id => amount
     /**
-     * @notice Tracks the upgrade level for a particular tool on a specific token ID.
-     *         e.g. `tokenId_toolId_Lvl[tokenId][toolId]` = 2 means the user’s tool is at level 2.
+     * @notice Tracks the upgrade level for a particular tool on a specific account.
+     *         e.g. `account_toolId_Lvl[account][toolId]` = 2 means the user’s tool is at level 2.
      */
-    mapping(uint256 => mapping(uint256 => uint256)) public tokenId_toolId_Lvl;    // token id => tool id => level
+    mapping(address => mapping(uint256 => uint256)) public account_toolId_Lvl;    // account => tool id => level
 
     /*----------  ERRORS ------------------------------------------------*/
 
@@ -128,28 +122,25 @@ contract Factory is ReentrancyGuard, Ownable {
     error Factory__InvalidInput();
     error Factory__NotAuthorized();
     error Factory__UpgradeLocked();
-    error Factory__InvalidTokenId();
+    error Factory__InvalidAccount();
     error Factory__InvalidLength();
     error Factory__CannotEvolve();
-    error Factory__NotKeyOwner();
     error Factory__ToolDoesNotExist();
 
     /*----------  EVENTS ------------------------------------------------*/
 
-    event Factory__ToolPurchased(uint256 indexed tokenId, uint256 toolId, uint256 newAmount, uint256 cost, uint256 ups);
-    event Factory__ToolUpgraded(uint256 indexed tokenId, uint256 toolId, uint256 newLevel, uint256 cost, uint256 ups);
-    event Factory__Claimed(uint256 indexed tokenId, uint256 amount);
+    event Factory__ToolPurchased(address indexed account, uint256 toolId, uint256 newAmount, uint256 cost, uint256 ups);
+    event Factory__ToolUpgraded(address indexed account, uint256 toolId, uint256 newLevel, uint256 cost, uint256 ups);
+    event Factory__Claimed(address indexed account, uint256 amount);
     event Factory__LvlSet(uint256 lvl, uint256 cost, uint256 unlock);
     event Factory__ToolSet(uint256 toolId, uint256 baseUps, uint256 baseCost);
     event Factory__ToolMultiplierSet(uint256 index, uint256 multiplier);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
-    /**
-     * @dev Ensures that the NFT with this tokenId actually exists (owned by someone).
-     */
-    modifier tokenExists(uint256 tokenId) {
-        if (IERC721(key).ownerOf(tokenId) == address(0)) revert Factory__InvalidTokenId();
+    modifier onlyAccount(address account) {
+        if (account == address(0)) revert Factory__InvalidAccount();
+        if (msg.sender != account) revert Factory__NotAuthorized();
         _;
     }
 
@@ -158,71 +149,67 @@ contract Factory is ReentrancyGuard, Ownable {
     /**
      * @notice Initializes the Factory contract.
      * @param _units The address of the Moola (Units) contract.
-     * @param _key The address of the NFT contract representing the player's "Weapon Inventory."
      */
-    constructor(address _units, address _key) {
+    constructor(address _units) {
         units = _units;
-        key = _key;
     }
 
     /**
-     * @notice Claims production for a specific tokenId (player).
+     * @notice Claims production for a specific account (player).
      *         Calculates how many units have accrued since the last claim, 
      *         subject to the maximum claim duration (8 hours).
-     * @param tokenId The NFT ID representing the player’s inventory.
+     * @param account The address of the player.
      */
-    function claim(uint256 tokenId) public tokenExists(tokenId) {
-        uint256 amount = tokenId_Ups[tokenId] * (block.timestamp - tokenId_Last[tokenId]);
-        uint256 maxAmount = tokenId_Ups[tokenId] * DURATION;
+    function claim(address account) public {
+        uint256 amount = account_Ups[account] * (block.timestamp - account_Last[account]);
+        uint256 maxAmount = account_Ups[account] * DURATION;
         if (amount > maxAmount) amount = maxAmount;
-        tokenId_Last[tokenId] = block.timestamp;
-        emit Factory__Claimed(tokenId, amount);
-        IUnits(units).mint(IERC721(key).ownerOf(tokenId), amount);
+        account_Last[account] = block.timestamp;
+        emit Factory__Claimed(account, amount);
+        IUnits(units).mint(account, amount);
     }
 
     /**
      * @notice Allows a player to purchase multiple copies of a specific tool at once.
      *         Each copy increases their total production rate.
-     * @param tokenId The NFT ID representing the player.
+     * @param account The address of the player.
      * @param toolId The tool being purchased.
      * @param toolAmount How many copies of the tool to buy this transaction.
      */
-    function purchaseTool(uint256 tokenId, uint256 toolId, uint256 toolAmount) external nonReentrant tokenExists(tokenId) {
-        if (IERC721(key).ownerOf(tokenId) != msg.sender) revert Factory__NotKeyOwner();
+    function purchaseTool(address account, uint256 toolId, uint256 toolAmount) external nonReentrant onlyAccount(account) {
         if (toolAmount == 0) revert Factory__InvalidInput();
-        claim(tokenId);
+        claim(account);
         uint256 cost = 0;
         for (uint256 i = 0; i < toolAmount; i++) {
-            uint256 currentAmount = tokenId_toolId_Amount[tokenId][toolId];
+            uint256 currentAmount = account_toolId_Amount[account][toolId];
             if (currentAmount == amountIndex) revert Factory__AmountMaxed();
             uint256 unitCost = getToolCost(toolId, currentAmount);
             cost += unitCost;
             if (unitCost == 0) revert Factory__ToolDoesNotExist();
-            tokenId_toolId_Amount[tokenId][toolId]++;
-            tokenId_Ups[tokenId] += getToolUps(toolId, tokenId_toolId_Lvl[tokenId][toolId]);
-            emit Factory__ToolPurchased(tokenId, toolId, tokenId_toolId_Amount[tokenId][toolId], unitCost, tokenId_Ups[tokenId]);
+            account_toolId_Amount[account][toolId]++;
+            account_Ups[account] += getToolUps(toolId, account_toolId_Lvl[account][toolId]);
+            emit Factory__ToolPurchased(account, toolId, account_toolId_Amount[account][toolId], unitCost, account_Ups[account]);
         }
-        IUnits(units).burn(msg.sender, cost);
+        IUnits(units).burn(account, cost);
     }
 
     /**
      * @notice Upgrades a specific tool for a given player to the next level.
      *         Requires enough copies of the tool in place to meet the unlock requirement,
      *         and burns the required Moola. 
-     * @param tokenId The NFT ID representing the player.
+     * @param account The address of the player.
      * @param toolId The tool being upgraded.
      */
-    function upgradeTool(uint256 tokenId, uint256 toolId) external nonReentrant tokenExists(tokenId) {
-        if (IERC721(key).ownerOf(tokenId) != msg.sender) revert Factory__NotKeyOwner();
-        uint256 currentLvl = tokenId_toolId_Lvl[tokenId][toolId];
+    function upgradeTool(address account, uint256 toolId) external nonReentrant onlyAccount(account) {
+        uint256 currentLvl = account_toolId_Lvl[account][toolId];
         uint256 cost = toolId_BaseCost[toolId] * lvl_CostMultiplier[currentLvl + 1];
         if (cost == 0) revert Factory__LevelMaxed();
-        if (tokenId_toolId_Amount[tokenId][toolId] < lvl_Unlock[currentLvl + 1]) revert Factory__UpgradeLocked();
-        claim(tokenId); 
-        tokenId_toolId_Lvl[tokenId][toolId]++;
-        tokenId_Ups[tokenId] += (getToolUps(toolId, currentLvl + 1) - getToolUps(toolId, currentLvl)) * tokenId_toolId_Amount[tokenId][toolId];
-        emit Factory__ToolUpgraded(tokenId, toolId, tokenId_toolId_Lvl[tokenId][toolId], cost, tokenId_Ups[tokenId]);
-        IUnits(units).burn(msg.sender, cost);
+        if (account_toolId_Amount[account][toolId] < lvl_Unlock[currentLvl + 1]) revert Factory__UpgradeLocked();
+        claim(account); 
+        account_toolId_Lvl[account][toolId]++;
+        account_Ups[account] += (getToolUps(toolId, currentLvl + 1) - getToolUps(toolId, currentLvl)) * account_toolId_Amount[account][toolId];
+        emit Factory__ToolUpgraded(account, toolId, account_toolId_Lvl[account][toolId], cost, account_Ups[account]);
+        IUnits(units).burn(account, cost);
     }
 
     /*----------  RESTRICTED FUNCTIONS  ---------------------------------*/

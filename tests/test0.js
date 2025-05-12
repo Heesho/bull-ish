@@ -50,13 +50,13 @@ describe("local: test0", function () {
     console.log("- Moola Initialized");
 
     const factoryArtifact = await ethers.getContractFactory("Factory");
-    factory = await factoryArtifact.deploy(moola.address, bullas.address);
+    factory = await factoryArtifact.deploy(moola.address);
     console.log("- Factory Initialized");
 
     moola2 = await moolaArtifact.deploy();
     console.log("- Moola2 Initialized");
 
-    factory2 = await factoryArtifact.deploy(moola2.address, bullas.address);
+    factory2 = await factoryArtifact.deploy(moola2.address);
     console.log("- Factory2 Initialized");
 
     const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
@@ -69,7 +69,6 @@ describe("local: test0", function () {
       developer.address,
       factory.address,
       moola.address,
-      bullas.address,
       vaultFactory.address
     );
     console.log("- Plugin Initialized");
@@ -79,7 +78,6 @@ describe("local: test0", function () {
       base.address,
       moola.address,
       factory.address,
-      bullas.address,
       plugin.address,
       AddressZero
     );
@@ -89,7 +87,6 @@ describe("local: test0", function () {
       base.address,
       moola2.address,
       factory2.address,
-      bullas.address,
       plugin.address,
       AddressZero
     );
@@ -125,23 +122,29 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
     await expect(
-      multicall.connect(user0).click(1, 1, "this is a message", {
+      multicall.connect(user0).click(user0.address, 1, "this is a message", {
         value: pointZeroOne,
       })
     ).to.be.reverted;
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
-    await multicall.connect(user0).click(1, 2, "this is a message", {
-      value: price2,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 2, "this is a message", {
+        value: price2,
+      });
   });
 
   it("Owner sets tools", async function () {
@@ -216,7 +219,7 @@ describe("local: test0", function () {
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 0, 1);
+    await factory.connect(user0).purchaseTool(user0.address, 0, 1);
   });
 
   it("Forward 2 hour", async function () {
@@ -227,12 +230,12 @@ describe("local: test0", function () {
 
   it("User0 claims moola", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).claim(1);
+    await factory.connect(user0).claim(user0.address);
   });
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 0, 5);
+    await factory.connect(user0).purchaseTool(user0.address, 0, 5);
   });
 
   it("Owner sets levels", async function () {
@@ -245,33 +248,33 @@ describe("local: test0", function () {
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
+    console.log(await multicall.getFactory(user0.address));
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).upgradeTool(1, 0);
+    await factory.connect(user0).upgradeTool(user0.address, 0);
   });
 
   it("User0 purchases building", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 0, 4);
+    await factory.connect(user0).purchaseTool(user0.address, 0, 4);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("Forward 2 hour", async function () {
@@ -282,15 +285,15 @@ describe("local: test0", function () {
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).upgradeTool(1, 0);
+    await factory.connect(user0).upgradeTool(user0.address, 0);
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("Get id of owner", async function () {
@@ -307,22 +310,22 @@ describe("local: test0", function () {
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 3, 1);
+    await factory.connect(user0).purchaseTool(user0.address, 3, 1);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("Forward 2 hour", async function () {
@@ -334,17 +337,17 @@ describe("local: test0", function () {
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 building id 1 costs", async function () {
     console.log("******************************************************");
     console.log(await factory.getMultipleToolCost(0, 10, 15));
-    console.log(await multicall.getMultipleToolCost(1, 0, 5));
+    console.log(await multicall.getMultipleToolCost(user0.address, 0, 5));
     console.log(await factory.getMultipleToolCost(0, 10, 27));
-    console.log(await multicall.getMultipleToolCost(1, 0, 17));
+    console.log(await multicall.getMultipleToolCost(user0.address, 0, 17));
   });
 
   it("Forward 8 hour", async function () {
@@ -360,7 +363,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building1", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 1, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -370,7 +373,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building2", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 2, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 2, 10);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -380,7 +383,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building3", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 3, 9);
+    await factory.connect(user0).purchaseTool(user0.address, 3, 9);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -390,7 +393,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building4", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 4, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 4, 10);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -400,57 +403,57 @@ describe("local: test0", function () {
 
   it("User0 purchases building5", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 5, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 5, 10);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 0, 20);
+    await factory.connect(user0).purchaseTool(user0.address, 0, 20);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 1, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 1, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 2, 8);
+    await factory.connect(user0).purchaseTool(user0.address, 2, 8);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("Forward 8 hour", async function () {
@@ -462,39 +465,56 @@ describe("local: test0", function () {
   it("User0 bakery state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
+    console.log(await multicall.getFactory(user0.address));
+  });
+
+  it("User0 sets booster", async function () {
+    console.log("******************************************************");
+    await plugin.setBooster(bullas.address);
   });
 
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
   });
 
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 2, "this is a message", {
-      value: price2,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 2, "this is a message", {
+        value: price2,
+      });
 
-    await multicall.connect(user0).click(1, 2, "this is a message", {
-      value: price2,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 2, "this is a message", {
+        value: price2,
+      });
 
-    await multicall.connect(user0).click(1, 2, "this is a message", {
-      value: price2,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 2, "this is a message", {
+        value: price2,
+      });
   });
 
   it("Forward 100 seconds", async function () {
@@ -526,17 +546,23 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
     let price = await plugin.getPrice();
-    await multicall.connect(user3).click(1, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user3)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
 
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
 
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("View Queue", async function () {
@@ -571,28 +597,28 @@ describe("local: test0", function () {
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
+    console.log(await multicall.getFactory(user0.address));
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
+    console.log(await multicall.getFactory(user0.address));
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 2, 12);
-    await factory.connect(user0).purchaseTool(1, 3, 20);
-    await factory.connect(user0).purchaseTool(1, 4, 20);
+    await factory.connect(user0).purchaseTool(user0.address, 2, 12);
+    await factory.connect(user0).purchaseTool(user0.address, 3, 20);
+    await factory.connect(user0).purchaseTool(user0.address, 4, 20);
   });
 
   it("Forward time 8 hours", async function () {
@@ -603,14 +629,14 @@ describe("local: test0", function () {
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 5, 20);
+    await factory.connect(user0).purchaseTool(user0.address, 5, 20);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("Forward time 8 hours", async function () {
@@ -621,7 +647,7 @@ describe("local: test0", function () {
 
   it("claim", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
   });
 
   it("Forward time 8 hours", async function () {
@@ -632,7 +658,7 @@ describe("local: test0", function () {
 
   it("claim", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
   });
 
   it("Forward time 8 hours", async function () {
@@ -644,18 +670,18 @@ describe("local: test0", function () {
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).purchaseTool(1, 0, 10);
-    await factory.connect(user0).purchaseTool(1, 1, 10);
-    await factory.connect(user0).purchaseTool(1, 2, 10);
-    await factory.connect(user0).purchaseTool(1, 3, 10);
-    await factory.connect(user0).purchaseTool(1, 4, 10);
-    await factory.connect(user0).purchaseTool(1, 5, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 0, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 1, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 2, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 3, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 4, 10);
+    await factory.connect(user0).purchaseTool(user0.address, 5, 10);
   });
 
   it("Forward time 8 hours", async function () {
@@ -667,13 +693,13 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 4, 5)
+      factory.connect(user0).purchaseTool(user0.address, 4, 5)
     ).to.be.revertedWith("Factory__AmountMaxed");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
@@ -681,13 +707,13 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 5, 5)
+      factory.connect(user0).purchaseTool(user0.address, 5, 5)
     ).to.be.revertedWith("Factory__AmountMaxed");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
@@ -695,13 +721,13 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 6, 5)
+      factory.connect(user0).purchaseTool(user0.address, 6, 5)
     ).to.be.revertedWith("Factory__ToolDoesNotExist");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
@@ -709,13 +735,13 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 7, 1)
+      factory.connect(user0).purchaseTool(user0.address, 7, 1)
     ).to.be.revertedWith("Factory__ToolDoesNotExist");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
@@ -723,13 +749,13 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 7, 5)
+      factory.connect(user0).purchaseTool(user0.address, 7, 5)
     ).to.be.revertedWith("Factory__ToolDoesNotExist");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
@@ -737,23 +763,23 @@ describe("local: test0", function () {
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
     await expect(
-      factory.connect(user0).purchaseTool(1, 7, 5)
+      factory.connect(user0).purchaseTool(user0.address, 7, 5)
     ).to.be.revertedWith("Factory__ToolDoesNotExist");
   });
 
   it("Forward time 8 hours", async function () {
     console.log("******************************************************");
-    await factory.claim(1);
+    await factory.claim(user0.address);
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
   });
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory.connect(user0).upgradeTool(1, 0);
-    await factory.connect(user0).upgradeTool(1, 1);
-    await factory.connect(user0).upgradeTool(1, 2);
-    await factory.connect(user0).upgradeTool(1, 3);
+    await factory.connect(user0).upgradeTool(user0.address, 0);
+    await factory.connect(user0).upgradeTool(user0.address, 1);
+    await factory.connect(user0).upgradeTool(user0.address, 2);
+    await factory.connect(user0).upgradeTool(user0.address, 3);
   });
 
   it("Forward time 8 hours", async function () {
@@ -764,41 +790,41 @@ describe("local: test0", function () {
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await expect(factory.connect(user0).upgradeTool(1, 0)).to.be.revertedWith(
-      "Factory__LevelMaxed"
-    );
-    await factory.connect(user0).upgradeTool(1, 1);
-    await factory.connect(user0).upgradeTool(1, 2);
-    await factory.connect(user0).upgradeTool(1, 3);
+    await expect(
+      factory.connect(user0).upgradeTool(user0.address, 0)
+    ).to.be.revertedWith("Factory__LevelMaxed");
+    await factory.connect(user0).upgradeTool(user0.address, 1);
+    await factory.connect(user0).upgradeTool(user0.address, 2);
+    await factory.connect(user0).upgradeTool(user0.address, 3);
   });
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await expect(factory.connect(user0).upgradeTool(1, 0)).to.be.revertedWith(
-      "Factory__LevelMaxed"
-    );
+    await expect(
+      factory.connect(user0).upgradeTool(user0.address, 0)
+    ).to.be.revertedWith("Factory__LevelMaxed");
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
-    console.log(await multicall.getUpgrades(1));
-    console.log(await multicall.getTools(1));
+    console.log(await multicall.getFactory(user0.address));
+    console.log(await multicall.getUpgrades(user0.address));
+    console.log(await multicall.getTools(user0.address));
   });
 
   it("User0 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall.getFactory(1));
+    console.log(await multicall.getFactory(user0.address));
   });
 
   it("Forward 700 seconds", async function () {
@@ -810,17 +836,23 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: price100,
+      });
 
-    await multicall.connect(user0).click(1, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: price100,
+      });
 
-    await multicall.connect(user0).click(1, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("Queue Data 2", async function () {
@@ -837,9 +869,11 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("Queue Data", async function () {
@@ -852,9 +886,11 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user1).click(2, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("Queue Data", async function () {
@@ -867,17 +903,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user2).click(3, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   // queue data
@@ -891,9 +931,11 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user1).click(2, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("Max Power Testing", async function () {
@@ -910,9 +952,11 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user2).click(3, 100, "this is a message", {
-      value: price100,
-    });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: price100,
+      });
   });
 
   it("Queue Data 2", async function () {
@@ -930,15 +974,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
-    await multicall.connect(user1).click(2, 1, "this is a message", {
-      value: price,
-    });
-    await multicall.connect(user2).click(3, 1, "this is a message", {
-      value: price,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 1, "this is a message", {
+        value: price,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 1, "this is a message", {
+        value: price,
+      });
   });
 
   it("Queue Data", async function () {
@@ -951,15 +1001,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -972,15 +1028,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -993,15 +1055,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1014,15 +1082,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1035,15 +1109,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1056,15 +1136,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Max Power Testing", async function () {
@@ -1081,15 +1167,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1102,15 +1194,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1123,15 +1221,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Max Power Testing", async function () {
@@ -1148,15 +1252,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1185,15 +1295,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1206,15 +1322,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1303,35 +1425,35 @@ describe("local: test0", function () {
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 0, 1);
+    await factory2.connect(user0).purchaseTool(user0.address, 0, 1);
   });
 
   it("User0 claims moola", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).claim(1);
+    await factory2.connect(user0).claim(user0.address);
   });
 
   it("User0 purchases tool", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 0, 5);
+    await factory2.connect(user0).purchaseTool(user0.address, 0, 5);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall2.getFactory(1));
-    console.log(await multicall2.getUpgrades(1));
-    console.log(await multicall2.getTools(1));
+    console.log(await multicall2.getFactory(user0.address));
+    console.log(await multicall2.getUpgrades(user0.address));
+    console.log(await multicall2.getTools(user0.address));
   });
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).upgradeTool(1, 0);
+    await factory2.connect(user0).upgradeTool(user0.address, 0);
   });
 
   it("User0 purchases building", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 0, 4);
+    await factory2.connect(user0).purchaseTool(user0.address, 0, 4);
   });
 
   it("Forward 2 hour", async function () {
@@ -1342,7 +1464,7 @@ describe("local: test0", function () {
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).upgradeTool(1, 0);
+    await factory2.connect(user0).upgradeTool(user0.address, 0);
   });
 
   it("Get id of owner", async function () {
@@ -1358,7 +1480,7 @@ describe("local: test0", function () {
 
   it("User0 upgrades building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 3, 1);
+    await factory2.connect(user0).purchaseTool(user0.address, 3, 1);
   });
 
   it("Forward 2 hour", async function () {
@@ -1370,9 +1492,9 @@ describe("local: test0", function () {
   it("User0 building id 1 costs", async function () {
     console.log("******************************************************");
     console.log(await factory2.getMultipleToolCost(0, 10, 15));
-    console.log(await multicall2.getMultipleToolCost(1, 0, 5));
+    console.log(await multicall2.getMultipleToolCost(user0.address, 0, 5));
     console.log(await factory2.getMultipleToolCost(0, 10, 27));
-    console.log(await multicall2.getMultipleToolCost(1, 0, 17));
+    console.log(await multicall2.getMultipleToolCost(user0.address, 0, 17));
   });
 
   it("Forward 8 hour", async function () {
@@ -1388,7 +1510,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building1", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 1, 10);
+    await factory2.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -1398,7 +1520,7 @@ describe("local: test0", function () {
 
   it("User0 purchases building4", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 4, 10);
+    await factory2.connect(user0).purchaseTool(user0.address, 4, 10);
   });
 
   it("Forward Time 8 hours", async function () {
@@ -1408,41 +1530,41 @@ describe("local: test0", function () {
 
   it("User0 purchases building5", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 5, 10);
+    await factory2.connect(user0).purchaseTool(user0.address, 5, 10);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 0, 20);
+    await factory2.connect(user0).purchaseTool(user0.address, 0, 20);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 1, 10);
+    await factory2.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 1, 10);
+    await factory2.connect(user0).purchaseTool(user0.address, 1, 10);
   });
 
   it("User0 purchases building0", async function () {
     console.log("******************************************************");
-    await factory2.connect(user0).purchaseTool(1, 2, 8);
+    await factory2.connect(user0).purchaseTool(user0.address, 2, 8);
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall2.getFactory(1));
-    console.log(await multicall2.getUpgrades(1));
-    console.log(await multicall2.getTools(1));
+    console.log(await multicall2.getFactory(user0.address));
+    console.log(await multicall2.getUpgrades(user0.address));
+    console.log(await multicall2.getTools(user0.address));
   });
 
   it("User0 building1 state", async function () {
     console.log("******************************************************");
     console.log("USER0 STATE");
-    console.log(await multicall2.getFactory(1));
+    console.log(await multicall2.getFactory(user0.address));
   });
 
   it("Forward 8 hour", async function () {
@@ -1454,17 +1576,23 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
-    await multicall2.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
 
-    await multicall2.connect(user0).click(1, 1, "this is a message", {
-      value: price,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 1, "this is a message", {
+        value: price,
+      });
   });
 
   it("Max Power Testing", async function () {
@@ -1474,15 +1602,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Claim and Distribute", async function () {
@@ -1500,15 +1634,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1521,15 +1661,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: price10,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: price10,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: price10,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: price10,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1547,15 +1693,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 10, "this is a message", {
-      value: ten,
-    });
-    await multicall2.connect(user1).click(2, 10, "this is a message", {
-      value: ten,
-    });
-    await multicall2.connect(user2).click(3, 10, "this is a message", {
-      value: ten,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 10, "this is a message", {
+        value: ten,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 10, "this is a message", {
+        value: ten,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 10, "this is a message", {
+        value: ten,
+      });
   });
 
   it("Claim and Distribute", async function () {
@@ -1573,15 +1725,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1616,15 +1774,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1637,15 +1801,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1658,15 +1828,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Claim and Distribute", async function () {
@@ -1684,15 +1860,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1709,15 +1891,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Queue Data", async function () {
@@ -1730,15 +1918,21 @@ describe("local: test0", function () {
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall2.connect(user0).click(1, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user1).click(2, 100, "this is a message", {
-      value: oneHundred,
-    });
-    await multicall2.connect(user2).click(3, 100, "this is a message", {
-      value: oneHundred,
-    });
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user1)
+      .click(user1.address, 100, "this is a message", {
+        value: oneHundred,
+      });
+    await multicall2
+      .connect(user2)
+      .click(user2.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 
   it("Claim and Distribute", async function () {
@@ -1751,5 +1945,25 @@ describe("local: test0", function () {
     console.log("Head: ", await plugin.head());
     console.log("Tail: ", await plugin.tail());
     console.log("Size: ", await plugin.count());
+  });
+
+  it("Disable Spanker", async function () {
+    console.log("******************************************************");
+    await plugin.setDisabled(user0.address, true);
+    await expect(
+      multicall2.connect(user0).click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      })
+    ).to.be.revertedWith("Plugin__AccountDisabled");
+  });
+
+  it("Enable Spanker", async function () {
+    console.log("******************************************************");
+    await plugin.setDisabled(user0.address, false);
+    await multicall2
+      .connect(user0)
+      .click(user0.address, 100, "this is a message", {
+        value: oneHundred,
+      });
   });
 });

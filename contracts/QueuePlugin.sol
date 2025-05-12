@@ -37,11 +37,11 @@ interface IVoter {
 }
 
 /**
- * @notice Interface for a factory that records how many “ups” each token ID has.
- *         This is used to calculate a player’s spank power (based on `tokenId_Ups`).
+ * @notice Interface for a factory that records how many “ups” each account has.
+ *         This is used to calculate a player’s spank power (based on `account_Ups`).
  */
 interface IFactory {
-    function tokenId_Ups(uint256 tokenId) external view returns (uint256);
+    function account_Ups(address account) external view returns (uint256);
 }
 
 /**
@@ -79,7 +79,7 @@ contract VaultToken is ERC20, Ownable {
     /**
      * @notice Initializes the ERC20 token with a name and symbol.
      */
-    constructor() ERC20("BULL ISH V2", "BULL ISH V2") {}
+    constructor() ERC20("BULL ISH V3", "BULL ISH V3") {}
 
     /**
      * @dev Mints new tokens to a specified address.
@@ -124,7 +124,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     // Maximum length of the optional message in a spank transaction
     uint256 public constant MESSAGE_LENGTH = 69;
     // Display strings for the plugin
-    string public constant NAME = "BULL ISH V2";
+    string public constant NAME = "BULL ISH V3";
     string public constant PROTOCOL = "Bullas";
 
     /*----------  STATE VARIABLES  --------------------------------------*/
@@ -142,8 +142,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     address[] private assetTokens;
     // Array of addresses for bribe tokens (WBERA)
     address[] private bribeTokens;
-    // The NFT (“Key”) used to identify the player (Bullas NFT)
-    address public immutable key;
     // The VaultToken contract representing staked positions (minted/burned by this contract)
     address public immutable vaultToken;
     // The RewardVault contract created for this specific VaultToken
@@ -153,6 +151,8 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     address public factory;
     // The “Units” contract that can mint in-game currency (Moola) for the user
     address public units;
+    // this is an nft address that gives the holder a 10% boost in spank power
+    address public booster;
 
     // Receivers for fee distribution
     address public treasury;
@@ -167,15 +167,13 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Represents a single player’s spot in the breadline (queue).
-     *         - `tokenId`: the ID of the Bullas NFT that caused this spank.
+     *         - `account`: the account that caused this spank.
      *         - `power`: the power derived from the NFT’s “ups” used to stake in the Gauge.
-     *         - `account`: the owner of the NFT (and thus the queue spot).
      *         - `message`: optional short message from the user (onchain).
      */
     struct Click {
-        uint256 tokenId;
-        uint256 power;
         address account;
+        uint256 power;
         string message;
     }
 
@@ -186,19 +184,23 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     uint256 public tail = 0;
     uint256 public count = 0;
 
+    // this is a mapping of accounts that are disabled from clicking
+    mapping(address => bool) public account_Disabled;
+
     /*----------  ERRORS ------------------------------------------------*/
 
+    error Plugin__InvalidAccount();
     error Plugin__InvalidZeroInput();
     error Plugin__NotAuthorizedVoter();
     error Plugin__NotAuthorized();
-    error Plugin__InvalidTokenId();
     error Plugin__InvalidMessage();
+    error Plugin__AccountDisabled();
 
     /*----------  EVENTS ------------------------------------------------*/
 
     event Plugin__ClaimedAndDistributed(uint256 bribeFee, uint256 treasuryFee, uint256 developerFee);
-    event Plugin__ClickAdded(uint256 tokenId, address author, uint256 mintAmount, uint256 power, string message);
-    event Plugin__ClickRemoved(uint256 tokenId, address author, uint256 power, string message);
+    event Plugin__ClickAdded(address indexed account, uint256 mintAmount, uint256 power, string message);
+    event Plugin__ClickRemoved(address indexed account, uint256 power, string message);
     event Plugin__TreasurySet(address treasury);
     event Plugin__DeveloperSet(address developer);
     event Plugin__FactorySet(address factory);
@@ -206,6 +208,8 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     event Plugin__EntryFeeSet(uint256 fee);
     event Plugin__AutoBribeSet(bool autoBribe);
     event Plugin__MaxPowerSet(uint256 maxPower);
+    event Plugin__BoosterSet(address booster);
+    event Plugin__DisabledSet(address account, bool disabled);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -237,7 +241,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
      * @param _developer The developer address receiving a portion of the fees.
      * @param _factory The factory contract used to compute "ups" for each NFT token ID.
      * @param _units The contract that mints in-game currency (Moola).
-     * @param _key The NFT contract address (weapon inventory).
      * @param _vaultFactory The factory that creates a specialized reward vault for `vaultToken`.
      */
     constructor(
@@ -249,7 +252,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         address _developer,
         address _factory,
         address _units,
-        address _key,
         address _vaultFactory
     ) {
         token = IERC20(_token);
@@ -260,7 +262,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         developer = _developer;
         factory = _factory;
         units = _units;
-        key = _key;
         OTOKEN = IVoter(_voter).OTOKEN();
         
         vaultToken = address(new VaultToken());
@@ -299,21 +300,21 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     /**
      * @notice A user "clicks" by paying the spank fee. This attempts to place them at the tail of the queue.
      *         If the queue is full, it removes the user at the head. The user’s NFT ID is used to calculate spank power.
-     * @param tokenId The ID of the NFT (Weapon Inventory) the user owns.
+     * @param account The account that caused this spank.
      * @param message A short message from the user, stored on-chain for fun.
      * @return upc The amount of "Ups" minted to the user as well as used to track in-game currency.
      */
-    function click(uint256 tokenId, string calldata message)
+    function click(address account, string calldata message)
         public
         nonReentrant
         returns (uint256)
     {
+        if (account == address(0)) revert Plugin__InvalidAccount();
         if (bytes(message).length == 0) revert Plugin__InvalidMessage();
         if (bytes(message).length > MESSAGE_LENGTH) revert Plugin__InvalidMessage();
+        if (account_Disabled[account]) revert Plugin__AccountDisabled();
 
         uint256 currentIndex = tail % QUEUE_SIZE;
-        address account = IERC721(key).ownerOf(tokenId);
-        if (account == address(0)) revert Plugin__InvalidTokenId();
 
         if (count == QUEUE_SIZE) {
             IGauge(gauge)._withdraw(queue[head].account, queue[head].power);
@@ -322,16 +323,16 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             IRewardVault(rewardVault).delegateWithdraw(queue[head].account, queue[head].power);
             VaultToken(vaultToken).burn(address(this), queue[head].power);
 
-            emit Plugin__ClickRemoved(queue[head].tokenId, queue[head].account, queue[head].power, queue[head].message);
+            emit Plugin__ClickRemoved(queue[head].account, queue[head].power, queue[head].message);
             head = (head + 1) % QUEUE_SIZE;
         }
 
-        (uint256 upc, uint256 power) = getPower(tokenId);
+        (uint256 upc, uint256 power) = getPower(account);
 
-        queue[currentIndex] = Click(tokenId, power, account, message);
+        queue[currentIndex] = Click(account, power, message);
         tail = (tail + 1) % QUEUE_SIZE;
         count = count < QUEUE_SIZE ? count + 1 : count;
-        emit Plugin__ClickAdded(tokenId, account, upc, queue[currentIndex].power, message);
+        emit Plugin__ClickAdded(account, upc, queue[currentIndex].power, message);
 
         token.safeTransferFrom(msg.sender, address(this), entryFee);
         
@@ -350,6 +351,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Owner can update the treasury address.
+     * @param _treasury The new treasury address.
      */
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
@@ -358,6 +360,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Only the current developer can set a new developer address.
+     * @param _developer The new developer address.
      */
     function setDeveloper(address _developer) external {
         if (msg.sender != developer) revert Plugin__NotAuthorized();
@@ -366,7 +369,27 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     }
 
     /**
+     * @notice Owner can update the booster address.
+     * @param _booster The new booster address.
+     */
+    function setBooster(address _booster) external onlyOwner {
+        booster = _booster;
+        emit Plugin__BoosterSet(_booster);
+    }
+
+    /**
+     * @notice Owner can update the disabled mapping.
+     * @param _account The account to update.
+     * @param _disabled Whether or not the account is disabled.
+     */
+    function setDisabled(address _account, bool _disabled) external onlyOwner {
+        account_Disabled[_account] = _disabled;
+        emit Plugin__DisabledSet(_account, _disabled);
+    }
+
+    /**
      * @notice Owner can update the factory used to look up “ups” for NFTs.
+     * @param _factory The new factory.
      */
     function setFactory(address _factory) external onlyOwner {
         factory = _factory;
@@ -375,6 +398,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Owner can update the units contract.
+     * @param _units The new units contract.
      */
     function setUnits(address _units) external onlyOwner {
         units = _units;
@@ -383,6 +407,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Owner can set the maximum allowed spank power per user.
+     * @param _maxPower The new maximum power.
      */
     function setMaxPower(uint256 _maxPower) external onlyOwner {
         maxPower = _maxPower;
@@ -391,6 +416,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Owner can update the spank entry fee.
+     * @param _entryFee The new entry fee.
      */
     function setEntryFee(uint256 _entryFee) external onlyOwner {
         entryFee = _entryFee;
@@ -399,6 +425,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Owner can switch off/on auto-bribing functionality.
+     * @param _autoBribe Whether or not to auto-bribe.
      */
     function setAutoBribe(bool _autoBribe) external onlyOwner {
         autoBribe = _autoBribe;
@@ -407,6 +434,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Only the voter contract can set the gauge address.
+     * @param _gauge The address of the gauge contract.
      */
     function setGauge(address _gauge) external onlyVoter {
         gauge = _gauge;
@@ -414,6 +442,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     /**
      * @notice Only the voter contract can set the bribe address.
+     * @param _bribe The address of the bribe contract.
      */
     function setBribe(address _bribe) external onlyVoter {
         bribe = _bribe;
@@ -516,12 +545,17 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
      * @notice Computes the “upc” and “power” for a given NFT tokenId.
      *         - `upc` is base + additional ups from the factory contract.
      *         - `power` is sqrt(upc * 1e18), then capped by `maxPower`.
-     * @param tokenId The NFT’s ID.
+     * @param account The account that caused this spank.
      * @return upc The computed units per click.
      * @return power The sqrt(upc * 1e18), capped by `maxPower`.
      */
-    function getPower(uint256 tokenId) public view returns (uint256 upc, uint256 power) {
-        upc = BASE_UPC + IFactory(factory).tokenId_Ups(tokenId);
+    function getPower(address account) public view returns (uint256 upc, uint256 power) {
+        upc = BASE_UPC + IFactory(factory).account_Ups(account);
+        if (booster != address(0)) {
+            if (IERC721(booster).balanceOf(account) > 0) {
+                upc = upc * 11 / 10;
+            }
+        }
         power = (upc * 1e18).sqrt();
         if (power > maxPower) {
             power = maxPower;
