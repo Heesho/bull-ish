@@ -2,7 +2,9 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @dev An interface for an ERC20-like token (the in-game Units/Moola),
@@ -33,7 +35,11 @@ contract Factory is ReentrancyGuard, Ownable {
      * @dev Used to ensure multiplication is precise when calculating cost multipliers.
      *      For instance, cost might be baseCost * costMultiplier / PRECISION.
      */
-    uint256 constant PRECISION = 1e18;   
+    uint256 constant PRECISION = 1 ether;
+    /**
+     * @dev The base units per click.
+     */
+    uint256 constant BASE_UPC = 1 ether;
     /**
      * @dev The maximum number of seconds for which production can be claimed at once.
      *      If a user hasn't claimed for a very long time, we cap the claimable period
@@ -48,6 +54,14 @@ contract Factory is ReentrancyGuard, Ownable {
      *         Used for minting and burning the in-game currency.
      */
     address immutable public units;
+    /**
+     * @notice The address of the NFT contract that gives the holder a 10% boost in spank power.
+     */
+    address public booster;
+    /**
+     * @notice The maximum power.
+     */
+    uint256 public maxPower = 1 ether;
 
     /**
      * @notice Tracks the current highest "level index."
@@ -135,6 +149,8 @@ contract Factory is ReentrancyGuard, Ownable {
     event Factory__LvlSet(uint256 lvl, uint256 cost, uint256 unlock);
     event Factory__ToolSet(uint256 toolId, uint256 baseUps, uint256 baseCost);
     event Factory__ToolMultiplierSet(uint256 index, uint256 multiplier);
+    event Factory__MaxPowerSet(uint256 maxPower);
+    event Factory__BoosterSet(address booster);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -261,6 +277,24 @@ contract Factory is ReentrancyGuard, Ownable {
         amountIndex += multipliers.length;
     }
 
+    /**
+     * @notice Owner can set the maximum allowed spank power per user.
+     * @param _maxPower The new maximum power.
+     */
+    function setMaxPower(uint256 _maxPower) external onlyOwner {
+        maxPower = _maxPower;
+        emit Factory__MaxPowerSet(_maxPower);
+    }
+
+    /**
+     * @notice Owner can update the booster address.
+     * @param _booster The new booster address.
+     */
+    function setBooster(address _booster) external onlyOwner {
+        booster = _booster;
+        emit Factory__BoosterSet(_booster);
+    }
+
     /*----------  VIEW FUNCTIONS  ---------------------------------------*/
 
     /**
@@ -299,6 +333,27 @@ contract Factory is ReentrancyGuard, Ownable {
             cost += getToolCost(toolId, i);
         }
         return cost;
+    }
+
+    /**
+     * @notice Computes the “upc” and “power” for a given NFT tokenId.
+     *         - `upc` is base + additional ups from the factory contract.
+     *         - `power` is sqrt(upc * 1e18), then capped by `maxPower`.
+     * @param account The account that caused this spank.
+     * @return upc The computed units per click.
+     * @return power The sqrt(upc * 1e18), capped by `maxPower`.
+     */
+    function getPower(address account) public view returns (uint256 upc, uint256 power) {
+        upc = BASE_UPC + account_Ups[account];
+        if (booster != address(0)) {
+            if (IERC721(booster).balanceOf(account) > 0) {
+                upc = upc * 11 / 10;
+            }
+        }
+        power = Math.sqrt(upc * 1e18);
+        if (power > maxPower) {
+            power = maxPower;
+        }
     }
 
 }

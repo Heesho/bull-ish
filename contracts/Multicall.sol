@@ -8,6 +8,7 @@ interface IWBERA {
 }
 
 interface IFactory {
+    function getPower(address account) external view returns (uint256 upc, uint256 power);
     function account_Ups(address account) external view returns (uint256);
     function account_Last(address account) external view returns (uint256);
     function account_toolId_Amount(address account, uint256 toolId) external view returns (uint256);
@@ -27,7 +28,6 @@ interface IFactory {
 interface IQueuePlugin {
     function click(address account, string calldata message) external returns (uint256 mintAmount);
     function getPrice() external view returns (uint256);
-    function getPower(address account) external view returns (uint256 upc, uint256 power);
     function getGauge() external view returns (address);
 }
 
@@ -124,7 +124,7 @@ contract Multicall {
     function getFactory(address account) external view returns (FactoryState memory factoryState) {
         factoryState.unitsBalance = IERC20(units).balanceOf(account);
         factoryState.ups = IFactory(factory).account_Ups(account);
-        (factoryState.upc, factoryState.power) = IQueuePlugin(plugin).getPower(account);
+        (factoryState.upc, factoryState.power) = IFactory(factory).getPower(account);
         uint256 amount = factoryState.ups * (block.timestamp - IFactory(factory).account_Last(account));
         factoryState.capacity = factoryState.ups * DURATION;
         factoryState.claimable = amount >= factoryState.capacity ? factoryState.capacity : amount;

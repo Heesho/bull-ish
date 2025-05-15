@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @notice Interface to interact with a Gauge contract.
@@ -41,7 +39,7 @@ interface IVoter {
  *         This is used to calculate a player’s spank power (based on `account_Ups`).
  */
 interface IFactory {
-    function account_Ups(address account) external view returns (uint256);
+    function getPower(address account) external view returns (uint256 upc, uint256 power);
 }
 
 /**
@@ -112,11 +110,8 @@ contract VaultToken is ERC20, Ownable {
  */
 contract QueuePlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20; // Safe wrappers around ERC20 ops that throw on failure
-    using Math for uint256;     // Additional math utilities (like sqrt, etc.)
 
     /*----------  CONSTANTS  --------------------------------------------*/
-    // Base units per click for every token ID, used in spank power calculation
-    uint256 public constant BASE_UPC = 1 ether;
     // Maximum number of clicks (spankers) in the queue 
     uint256 public constant QUEUE_SIZE = 300;
     // Duration for which the plugin collects fees
@@ -128,6 +123,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     string public constant PROTOCOL = "Bullas";
 
     /*----------  STATE VARIABLES  --------------------------------------*/
+
     // The token used for paying the spank fee (BERA)
     IERC20 private immutable token;
     // The oTOKEN address, derived from the voter contract
@@ -151,15 +147,11 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     address public factory;
     // The “Units” contract that can mint in-game currency (Moola) for the user
     address public units;
-    // this is an nft address that gives the holder a 10% boost in spank power
-    address public booster;
 
     // Receivers for fee distribution
     address public treasury;
     address public developer;
 
-    // The maximum spank power allowed per user (cap on sqrt value from ups calculation)
-    uint256 public maxPower = 1 ether;
     // The fee (in BERA) required to spank
     uint256 public entryFee = 0.69 ether;
     // Whether or not fees are automatically sent to the bribe contract
@@ -207,8 +199,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     event Plugin__UnitsSet(address units);
     event Plugin__EntryFeeSet(uint256 fee);
     event Plugin__AutoBribeSet(bool autoBribe);
-    event Plugin__MaxPowerSet(uint256 maxPower);
-    event Plugin__BoosterSet(address booster);
     event Plugin__DisabledSet(address account, bool disabled);
 
     /*----------  MODIFIERS  --------------------------------------------*/
@@ -327,7 +317,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             head = (head + 1) % QUEUE_SIZE;
         }
 
-        (uint256 upc, uint256 power) = getPower(account);
+        (uint256 upc, uint256 power) = IFactory(factory).getPower(account);
 
         queue[currentIndex] = Click(account, power, message);
         tail = (tail + 1) % QUEUE_SIZE;
@@ -369,15 +359,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Owner can update the booster address.
-     * @param _booster The new booster address.
-     */
-    function setBooster(address _booster) external onlyOwner {
-        booster = _booster;
-        emit Plugin__BoosterSet(_booster);
-    }
-
-    /**
      * @notice Owner can update the disabled mapping.
      * @param _account The account to update.
      * @param _disabled Whether or not the account is disabled.
@@ -403,15 +384,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     function setUnits(address _units) external onlyOwner {
         units = _units;
         emit Plugin__UnitsSet(_units);
-    }
-
-    /**
-     * @notice Owner can set the maximum allowed spank power per user.
-     * @param _maxPower The new maximum power.
-     */
-    function setMaxPower(uint256 _maxPower) external onlyOwner {
-        maxPower = _maxPower;
-        emit Plugin__MaxPowerSet(_maxPower);
     }
 
     /**
@@ -539,27 +511,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
      */
     function getRewardVault() public view returns (address) {
         return rewardVault;
-    }
-
-    /**
-     * @notice Computes the “upc” and “power” for a given NFT tokenId.
-     *         - `upc` is base + additional ups from the factory contract.
-     *         - `power` is sqrt(upc * 1e18), then capped by `maxPower`.
-     * @param account The account that caused this spank.
-     * @return upc The computed units per click.
-     * @return power The sqrt(upc * 1e18), capped by `maxPower`.
-     */
-    function getPower(address account) public view returns (uint256 upc, uint256 power) {
-        upc = BASE_UPC + IFactory(factory).account_Ups(account);
-        if (booster != address(0)) {
-            if (IERC721(booster).balanceOf(account) > 0) {
-                upc = upc * 11 / 10;
-            }
-        }
-        power = (upc * 1e18).sqrt();
-        if (power > maxPower) {
-            power = maxPower;
-        }
     }
 
     /**

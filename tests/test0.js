@@ -470,7 +470,7 @@ describe("local: test0", function () {
 
   it("User0 sets booster", async function () {
     console.log("******************************************************");
-    await plugin.setBooster(bullas.address);
+    await factory.setBooster(bullas.address);
   });
 
   it("User0 clicks cookie", async function () {
@@ -939,7 +939,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(oneHundred);
+    await factory.setMaxPower(oneHundred);
   });
 
   it("Queue Data", async function () {
@@ -1154,7 +1154,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(one);
+    await factory.setMaxPower(one);
   });
 
   it("Queue Data", async function () {
@@ -1239,7 +1239,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(ten);
+    await factory.setMaxPower(ten);
   });
 
   it("Queue Data", async function () {
@@ -1596,7 +1596,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(one);
+    await factory.setMaxPower(one);
   });
 
   it("everyone clicks cookie", async function () {
@@ -1768,7 +1768,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(ten);
+    await factory.setMaxPower(ten);
   });
 
   it("everyone clicks cookie", async function () {
@@ -1885,7 +1885,7 @@ describe("local: test0", function () {
   });
 
   it("Max Power Testing", async function () {
-    await plugin.setMaxPower(ten);
+    await factory.setMaxPower(ten);
   });
 
   it("everyone clicks cookie", async function () {
