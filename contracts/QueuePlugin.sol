@@ -150,6 +150,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
 
     // Receivers for fee distribution
     address public treasury;
+    address public incentives;
     address public developer;
 
     // The fee (in BERA) required to spank
@@ -194,6 +195,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     event Plugin__ClickAdded(address indexed account, uint256 mintAmount, uint256 power, string message);
     event Plugin__ClickRemoved(address indexed account, uint256 power, string message);
     event Plugin__TreasurySet(address treasury);
+    event Plugin__IncentivesSet(address incentives);
     event Plugin__DeveloperSet(address developer);
     event Plugin__FactorySet(address factory);
     event Plugin__UnitsSet(address units);
@@ -249,6 +251,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         assetTokens = _assetTokens;
         bribeTokens = _bribeTokens;
         treasury = _treasury;
+        incentives = _treasury;
         developer = _developer;
         factory = _factory;
         units = _units;
@@ -275,14 +278,14 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             uint256 developerFee = fee - treasuryFee;
             token.safeTransfer(treasury, treasuryFee);
             token.safeTransfer(developer, developerFee);
-            if (autoBribe) {            
+            if (autoBribe) {
                 token.safeApprove(bribe, 0);
                 token.safeApprove(bribe, balance - fee);
                 IBribe(bribe).notifyRewardAmount(address(token), balance - fee);
                 emit Plugin__ClaimedAndDistributed(balance - fee, treasuryFee, developerFee);
             } else {
-                token.safeTransfer(treasury, balance - fee);
-                emit Plugin__ClaimedAndDistributed(0, balance + treasuryFee - fee, developerFee);
+                token.safeTransfer(incentives, balance - fee);
+                emit Plugin__ClaimedAndDistributed(balance - fee, treasuryFee, developerFee);
             }
         }
     }
@@ -346,6 +349,15 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
         emit Plugin__TreasurySet(_treasury);
+    }
+    
+    /**
+     * @notice Owner can update the incentives address.
+     * @param _incentives The new incentives address.
+     */
+    function setIncentives(address _incentives) external onlyOwner {
+        incentives = _incentives;
+        emit Plugin__IncentivesSet(_incentives);
     }
 
     /**
