@@ -177,9 +177,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     uint256 public tail = 0;
     uint256 public count = 0;
 
-    // this is a mapping of accounts that are disabled from clicking
-    mapping(address => bool) public account_Disabled;
-
     /*----------  ERRORS ------------------------------------------------*/
 
     error Plugin__InvalidAccount();
@@ -187,7 +184,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     error Plugin__NotAuthorizedVoter();
     error Plugin__NotAuthorized();
     error Plugin__InvalidMessage();
-    error Plugin__AccountDisabled();
 
     /*----------  EVENTS ------------------------------------------------*/
 
@@ -201,7 +197,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
     event Plugin__UnitsSet(address units);
     event Plugin__EntryFeeSet(uint256 fee);
     event Plugin__AutoBribeSet(bool autoBribe);
-    event Plugin__DisabledSet(address account, bool disabled);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -305,7 +300,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         if (account == address(0)) revert Plugin__InvalidAccount();
         if (bytes(message).length == 0) revert Plugin__InvalidMessage();
         if (bytes(message).length > MESSAGE_LENGTH) revert Plugin__InvalidMessage();
-        if (account_Disabled[account]) revert Plugin__AccountDisabled();
 
         uint256 currentIndex = tail % QUEUE_SIZE;
 
@@ -368,16 +362,6 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
         if (msg.sender != developer) revert Plugin__NotAuthorized();
         developer = _developer;
         emit Plugin__DeveloperSet(_developer);
-    }
-
-    /**
-     * @notice Owner can update the disabled mapping.
-     * @param _account The account to update.
-     * @param _disabled Whether or not the account is disabled.
-     */
-    function setDisabled(address _account, bool _disabled) external onlyOwner {
-        account_Disabled[_account] = _disabled;
-        emit Plugin__DisabledSet(_account, _disabled);
     }
 
     /**

@@ -1949,17 +1949,17 @@ describe("local: test0", function () {
 
   it("Disable Spanker", async function () {
     console.log("******************************************************");
-    await plugin.setDisabled(user0.address, true);
+    await factory2.setDisabled(user0.address, true);
     await expect(
       multicall2.connect(user0).click(user0.address, 100, "this is a message", {
         value: oneHundred,
       })
-    ).to.be.revertedWith("Plugin__AccountDisabled");
+    ).to.be.revertedWith("Factory__AccountDisabled");
   });
 
   it("Enable Spanker", async function () {
     console.log("******************************************************");
-    await plugin.setDisabled(user0.address, false);
+    await factory2.setDisabled(user0.address, false);
     await multicall2
       .connect(user0)
       .click(user0.address, 100, "this is a message", {

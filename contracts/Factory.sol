@@ -128,6 +128,11 @@ contract Factory is ReentrancyGuard, Ownable {
      *         e.g. `account_toolId_Lvl[account][toolId]` = 2 means the user’s tool is at level 2.
      */
     mapping(address => mapping(uint256 => uint256)) public account_toolId_Lvl;    // account => tool id => level
+    /**
+     * @notice Tracks whether a player has a disabled power level.
+     *         e.g. `account_Disabled[account]` = true means the player is disabled.
+     */
+    mapping(address => bool) public account_Disabled;
 
     /*----------  ERRORS ------------------------------------------------*/
 
@@ -137,9 +142,8 @@ contract Factory is ReentrancyGuard, Ownable {
     error Factory__NotAuthorized();
     error Factory__UpgradeLocked();
     error Factory__InvalidAccount();
-    error Factory__InvalidLength();
-    error Factory__CannotEvolve();
     error Factory__ToolDoesNotExist();
+    error Factory__AccountDisabled();
 
     /*----------  EVENTS ------------------------------------------------*/
 
@@ -151,6 +155,7 @@ contract Factory is ReentrancyGuard, Ownable {
     event Factory__ToolMultiplierSet(uint256 index, uint256 multiplier);
     event Factory__MaxPowerSet(uint256 maxPower);
     event Factory__BoosterSet(address booster);
+    event Factory__DisabledSet(address account, bool disabled);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -295,6 +300,16 @@ contract Factory is ReentrancyGuard, Ownable {
         emit Factory__BoosterSet(_booster);
     }
 
+    /**
+     * @notice Owner can disable a player's power level.
+     * @param account The address of the player.
+     * @param disabled Whether to disable the player's power level.
+     */
+    function setDisabled(address account, bool disabled) external onlyOwner {
+        account_Disabled[account] = disabled;
+        emit Factory__DisabledSet(account, disabled);
+    }
+
     /*----------  VIEW FUNCTIONS  ---------------------------------------*/
 
     /**
@@ -344,6 +359,7 @@ contract Factory is ReentrancyGuard, Ownable {
      * @return power The sqrt(upc * 1e18), capped by `maxPower`.
      */
     function getPower(address account) public view returns (uint256 upc, uint256 power) {
+        if (account_Disabled[account]) revert Factory__AccountDisabled();
         upc = BASE_UPC + account_Ups[account];
         if (booster != address(0)) {
             if (IERC721(booster).balanceOf(account) > 0) {
