@@ -22,7 +22,7 @@ let base, voter;
 let moola, bullas, factory, plugin, multicall, vaultFactory;
 let moola2, factory2, multicall2;
 
-describe.only("local: test0", function () {
+describe("local: test0", function () {
   before("Initial set up", async function () {
     console.log("Begin Initialization");
 
