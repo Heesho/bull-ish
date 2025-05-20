@@ -6,6 +6,8 @@ const { ethers, network } = require("hardhat");
 const { execPath } = require("process");
 
 const AddressZero = "0x0000000000000000000000000000000000000000";
+const RandomNumber =
+  "0x0000000000000000000000000000000000000000000000000000000000000001";
 const pointZeroOne = convert("0.01", 18);
 const price = convert("0.04269", 18);
 const price2 = convert("0.08538", 18);
@@ -54,7 +56,7 @@ describe("local: test1", function () {
     factory = await factoryArtifact.deploy(moola.address);
     console.log("- Factory Initialized");
 
-    const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
+    const pluginArtifact = await ethers.getContractFactory("WheelPlugin");
     plugin = await pluginArtifact.deploy(
       base.address,
       voter.address,
@@ -64,7 +66,8 @@ describe("local: test1", function () {
       developer.address,
       factory.address,
       moola.address,
-      vaultFactory.address
+      vaultFactory.address,
+      AddressZero
     );
     console.log("- Plugin Initialized");
 

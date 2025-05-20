@@ -6,6 +6,8 @@ const { ethers, network } = require("hardhat");
 const { execPath } = require("process");
 
 const AddressZero = "0x0000000000000000000000000000000000000000";
+const RandomNumber =
+  "0x0000000000000000000000000000000000000000000000000000000000000001";
 const pointZeroOne = convert("0.01", 18);
 const price = convert("0.69", 18);
 const price2 = convert("1.38", 18);
@@ -20,7 +22,7 @@ let base, voter;
 let moola, bullas, factory, plugin, multicall, vaultFactory;
 let moola2, factory2, multicall2;
 
-describe("local: test0", function () {
+describe.only("local: test0", function () {
   before("Initial set up", async function () {
     console.log("Begin Initialization");
 
@@ -59,7 +61,7 @@ describe("local: test0", function () {
     factory2 = await factoryArtifact.deploy(moola2.address);
     console.log("- Factory2 Initialized");
 
-    const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
+    const pluginArtifact = await ethers.getContractFactory("WheelPlugin");
     plugin = await pluginArtifact.deploy(
       base.address,
       voter.address,
@@ -69,7 +71,8 @@ describe("local: test0", function () {
       developer.address,
       factory.address,
       moola.address,
-      vaultFactory.address
+      vaultFactory.address,
+      AddressZero
     );
     console.log("- Plugin Initialized");
 
@@ -122,29 +125,23 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
-        value: price,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
     await expect(
-      multicall.connect(user0).click(user0.address, 1, "this is a message", {
+      plugin.connect(user0).play(user0.address, RandomNumber, {
         value: pointZeroOne,
       })
-    ).to.be.reverted;
+    ).to.be.revertedWith("Plugin__InsufficientPayment");
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
-        value: price,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 2, "this is a message", {
-        value: price2,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price2,
+    });
   });
 
   it("Owner sets tools", async function () {
@@ -476,45 +473,33 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
-        value: price,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
-        value: price,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
-        value: price,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
   });
 
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 2, "this is a message", {
-        value: price2,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price2,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 2, "this is a message", {
-        value: price2,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price2,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 2, "this is a message", {
-        value: price2,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price2,
+    });
   });
 
   it("Forward 100 seconds", async function () {
@@ -545,46 +530,28 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-    let price = await plugin.getPrice();
-    await multicall
-      .connect(user3)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
+    let price = await plugin.playPrice();
+    await plugin.connect(user3).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
+    await plugin.connect(user1).play(user1.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
+    await plugin.connect(user2).play(user2.address, RandomNumber, {
+      value: price,
+    });
   });
 
-  it("View Queue", async function () {
+  it("View Wheel", async function () {
     console.log("******************************************************");
-    console.log(await plugin.getQueue());
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Count: ", await plugin.count());
-  });
-
-  it("Queue Data 2", async function () {
-    console.log("******************************************************");
-    console.log(await plugin.getQueueSize());
+    console.log(await plugin.getWheel());
   });
 
   it("Queue Data 3", async function () {
     console.log("******************************************************");
-    console.log(await plugin.getQueueFragment(0, 10));
+    console.log(await plugin.getWheelFragment(0, 10));
   });
 
   it("Claim and distro from plugin", async function () {
@@ -836,28 +803,17 @@ describe("local: test0", function () {
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: price100,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: price100,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
 
-    await multicall
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: price100,
-      });
-  });
-
-  it("Queue Data 2", async function () {
-    console.log("******************************************************");
-    console.log(await plugin.getQueueSize());
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: price,
+    });
   });
 
   it("Forward 5 hours", async function () {
@@ -868,412 +824,119 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: price100,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+      await plugin.connect(user0).play(user1.address, RandomNumber, {
+        value: price,
+      });
+      await plugin.connect(user0).play(user2.address, RandomNumber, {
+        value: price,
+      });
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: price100,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user1).play(user0.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
+      });
+      await plugin.connect(user1).play(user2.address, RandomNumber, {
+        value: price,
+      });
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: price100,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user2).play(user0.address, RandomNumber, {
+        value: price,
       });
+      await plugin.connect(user2).play(user1.address, RandomNumber, {
+        value: price,
+      });
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
+      });
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: price100,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  // queue data
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: price100,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
+      });
+    }
   });
 
   it("Max Power Testing", async function () {
     await factory.setMaxPower(oneHundred);
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: price100,
-      });
-  });
-
-  it("Queue Data 2", async function () {
-    console.log("******************************************************");
-    console.log(await plugin.getQueueSize());
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
         value: price,
       });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 1, "this is a message", {
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
         value: price,
       });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 1, "this is a message", {
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
         value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
+    }
   });
 
   it("Max Power Testing", async function () {
     await factory.setMaxPower(one);
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
+    }
   });
 
   it("Max Power Testing", async function () {
     await factory.setMaxPower(ten);
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-    await multicall
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
-    await multicall
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("User0 mints a clicker", async function () {
@@ -1294,56 +957,17 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
+    for (let i = 0; i < 100; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("Owner sets tools", async function () {
@@ -1573,26 +1197,19 @@ describe("local: test0", function () {
     await network.provider.send("evm_mine");
   });
 
-  it("User0 clicks cookie", async function () {
+  it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
         value: price,
       });
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
         value: price,
       });
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 1, "this is a message", {
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
         value: price,
       });
+    }
   });
 
   it("Max Power Testing", async function () {
@@ -1601,22 +1218,17 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
       });
+    }
   });
 
   it("Claim and Distribute", async function () {
@@ -1624,90 +1236,55 @@ describe("local: test0", function () {
     await plugin.claimAndDistribute();
   });
 
-  it("Queue Data", async function () {
+  it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
+      });
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
+      });
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
+      });
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
+    for (let i = 0; i < 5; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: price,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: price,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
-  it("everyone clicks cookie", async function () {
-    console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: price10,
-      });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: price10,
-      });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("set entry price", async function () {
     console.log("******************************************************");
-    await plugin.setEntryFee(one);
+    await plugin.setPlayPrice(one);
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 10, "this is a message", {
-        value: ten,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 10, "this is a message", {
-        value: ten,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 10, "this is a message", {
-        value: ten,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
+    }
   });
 
   it("Claim and Distribute", async function () {
@@ -1715,38 +1292,20 @@ describe("local: test0", function () {
     await plugin.claimAndDistribute();
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("Moola Testing", async function () {
@@ -1773,115 +1332,70 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
+    }
   });
-
   it("Claim and Distribute", async function () {
     console.log("******************************************************");
     await plugin.claimAndDistribute();
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("Max Power Testing", async function () {
@@ -1890,49 +1404,34 @@ describe("local: test0", function () {
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
-  });
-
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
+    }
   });
 
   it("everyone clicks cookie", async function () {
     console.log("******************************************************");
-
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+    let playPrice = await plugin.playPrice();
+    for (let i = 0; i < 10; i++) {
+      await plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user1)
-      .click(user1.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user1).play(user1.address, RandomNumber, {
+        value: playPrice,
       });
-    await multicall2
-      .connect(user2)
-      .click(user2.address, 100, "this is a message", {
-        value: oneHundred,
+      await plugin.connect(user2).play(user2.address, RandomNumber, {
+        value: playPrice,
       });
+    }
   });
 
   it("Claim and Distribute", async function () {
@@ -1940,19 +1439,12 @@ describe("local: test0", function () {
     await plugin.claimAndDistribute();
   });
 
-  it("Queue Data", async function () {
-    console.log("******************************************************");
-    console.log("Head: ", await plugin.head());
-    console.log("Tail: ", await plugin.tail());
-    console.log("Size: ", await plugin.count());
-  });
-
   it("Disable Spanker", async function () {
     console.log("******************************************************");
     await factory2.setDisabled(user0.address, true);
     await expect(
-      multicall2.connect(user0).click(user0.address, 100, "this is a message", {
-        value: oneHundred,
+      plugin.connect(user0).play(user0.address, RandomNumber, {
+        value: one,
       })
     ).to.be.revertedWith("Factory__AccountDisabled");
   });
@@ -1960,10 +1452,8 @@ describe("local: test0", function () {
   it("Enable Spanker", async function () {
     console.log("******************************************************");
     await factory2.setDisabled(user0.address, false);
-    await multicall2
-      .connect(user0)
-      .click(user0.address, 100, "this is a message", {
-        value: oneHundred,
-      });
+    await plugin.connect(user0).play(user0.address, RandomNumber, {
+      value: one,
+    });
   });
 });

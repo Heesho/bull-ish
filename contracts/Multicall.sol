@@ -3,10 +3,6 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IWBERA {
-    function deposit() external payable;
-}
-
 interface IFactory {
     function getPower(address account) external view returns (uint256 upc, uint256 power);
     function account_Ups(address account) external view returns (uint256);
@@ -25,8 +21,7 @@ interface IFactory {
     function getToolUps(uint256 toolId, uint256 lvl) external view returns (uint256);
 }
 
-interface IQueuePlugin {
-    function click(address account, string calldata message) external returns (uint256 mintAmount);
+interface IWheelPlugin {
     function getPrice() external view returns (uint256);
     function getGauge() external view returns (address);
 }
@@ -93,25 +88,13 @@ contract Multicall {
         oBERO = _oBERO;
     }
 
-    function click(address account, uint256 amount, string calldata message) external payable returns (uint256 mintAmount) {
-        uint256 price = IQueuePlugin(plugin).getPrice() * amount;
-        if (msg.value != price) revert Multicall__InvalidPayment();
-        IWBERA(base).deposit{value: price}();
-        IERC20(base).safeApprove(plugin, 0);
-        IERC20(base).safeApprove(plugin, price);
-
-        for (uint256 i = 0; i < amount; i++) {
-            mintAmount += IQueuePlugin(plugin).click(account, message);
-        }
-    }
-
     function getMultipleToolCost(address account, uint256 toolId, uint256 purchaseAmount) external view returns (uint256) {
         uint256 currentAmount = IFactory(factory).account_toolId_Amount(account, toolId);
         return IFactory(factory).getMultipleToolCost(toolId, currentAmount, currentAmount + purchaseAmount);
     }
 
     function getGauge(address account) external view returns (GaugeState memory gaugeState) {
-        address gauge = IQueuePlugin(plugin).getGauge();
+        address gauge = IWheelPlugin(plugin).getGauge();
         if (gauge != address(0)) {
             gaugeState.rewardPerToken = IGauge(gauge).totalSupply() == 0 ? 0 : (IGauge(gauge).getRewardForDuration(oBERO) * 1e18 / IGauge(gauge).totalSupply());
             gaugeState.totalSupply = IGauge(gauge).totalSupply();
