@@ -242,6 +242,8 @@ contract WheelPlugin is IEntropyConsumer, ReentrancyGuard, Ownable {
         IRewardVault(rewardVault).delegateStake(player, power);
 
         IUnits(units).mint(player, upc);
+
+        delete sequence_Account[sequenceNumber];
         emit Plugin__Played(player, upc, power);
     }
 
