@@ -24,7 +24,7 @@ contract RewardVault {
 
 }
 
-contract BerachainRewardsVaultFactory {
+contract BerachainRewardVaultFactory {
     
     constructor() {
     }

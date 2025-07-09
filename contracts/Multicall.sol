@@ -21,16 +21,10 @@ interface IFactory {
     function getToolUps(uint256 toolId, uint256 lvl) external view returns (uint256);
 }
 
-interface IWheelPlugin {
-    function getPrice() external view returns (uint256);
-    function getGauge() external view returns (address);
-}
-
-interface IGauge {
-    function balanceOf(address account) external view returns (uint256);
+interface IWheel {
+    function playPrice() external view returns (uint256);
     function totalSupply() external view returns (uint256);
-    function getRewardForDuration(address reward) external view returns (uint256);
-    function earned(address account, address reward) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 contract Multicall {
@@ -41,15 +35,11 @@ contract Multicall {
     address public immutable base;
     address public immutable units;
     address public immutable factory;
-    address public immutable plugin;
-    address public immutable oBERO;
+    address public immutable wheel;
 
-    struct GaugeState {
-        uint256 rewardPerToken;
-        uint256 totalSupply;
+    struct VaultState {
         uint256 balance;
-        uint256 earned;
-        uint256 oBeroBalance;
+        uint256 totalSupply;
     }
 
     struct FactoryState {
@@ -80,12 +70,11 @@ contract Multicall {
 
     error Multicall__InvalidPayment();
 
-    constructor(address _base, address _units, address _factory, address _plugin, address _oBERO) {
+    constructor(address _base, address _units, address _factory, address _wheel) {
         base = _base;
         units = _units;
         factory = _factory;
-        plugin = _plugin;
-        oBERO = _oBERO;
+        wheel = _wheel;
     }
 
     function getMultipleToolCost(address account, uint256 toolId, uint256 purchaseAmount) external view returns (uint256) {
@@ -93,15 +82,9 @@ contract Multicall {
         return IFactory(factory).getMultipleToolCost(toolId, currentAmount, currentAmount + purchaseAmount);
     }
 
-    function getGauge(address account) external view returns (GaugeState memory gaugeState) {
-        address gauge = IWheelPlugin(plugin).getGauge();
-        if (gauge != address(0)) {
-            gaugeState.rewardPerToken = IGauge(gauge).totalSupply() == 0 ? 0 : (IGauge(gauge).getRewardForDuration(oBERO) * 1e18 / IGauge(gauge).totalSupply());
-            gaugeState.totalSupply = IGauge(gauge).totalSupply();
-            gaugeState.balance = IGauge(gauge).balanceOf(account);
-            gaugeState.earned = IGauge(gauge).earned(account, oBERO);
-            gaugeState.oBeroBalance = IERC20(oBERO).balanceOf(account);
-        }
+    function getVault(address account) external view returns (VaultState memory vaultState) {
+        vaultState.balance = IWheel(wheel).balanceOf(account);
+        vaultState.totalSupply = IWheel(wheel).totalSupply();
     }
 
     function getFactory(address account) external view returns (FactoryState memory factoryState) {

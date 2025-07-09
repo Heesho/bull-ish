@@ -17,8 +17,17 @@ const one = convert("1", 18);
 const ten = convert("10", 18);
 const oneHundred = convert("100", 18);
 
-let owner, treasury, user0, user1, user2, user3, user4, developer;
-let base, voter;
+let owner,
+  treasury,
+  incentives,
+  user0,
+  user1,
+  user2,
+  user3,
+  user4,
+  developer,
+  community;
+let base;
 let moola, bullas, factory, plugin, multicall, vaultFactory;
 let moola2, factory2, multicall2;
 
@@ -26,11 +35,21 @@ describe("local: test0", function () {
   before("Initial set up", async function () {
     console.log("Begin Initialization");
 
-    [owner, treasury, user0, user1, user2, user3, user4, developer] =
-      await ethers.getSigners();
+    [
+      owner,
+      treasury,
+      incentives,
+      user0,
+      user1,
+      user2,
+      user3,
+      user4,
+      developer,
+      community,
+    ] = await ethers.getSigners();
 
     const vaultFactoryArtifact = await ethers.getContractFactory(
-      "BerachainRewardsVaultFactory"
+      "BerachainRewardVaultFactory"
     );
     vaultFactory = await vaultFactoryArtifact.deploy();
     console.log("- Vault Factory Initialized");
@@ -38,10 +57,6 @@ describe("local: test0", function () {
     const baseArtifact = await ethers.getContractFactory("Base");
     base = await baseArtifact.deploy();
     console.log("- BASE Initialized");
-
-    const voterArtifact = await ethers.getContractFactory("Voter");
-    voter = await voterArtifact.deploy();
-    console.log("- Voter Initialized");
 
     const bullasArtifact = await ethers.getContractFactory("Bullas");
     bullas = await bullasArtifact.deploy();
@@ -61,14 +76,13 @@ describe("local: test0", function () {
     factory2 = await factoryArtifact.deploy(moola2.address);
     console.log("- Factory2 Initialized");
 
-    const pluginArtifact = await ethers.getContractFactory("WheelPlugin");
+    const pluginArtifact = await ethers.getContractFactory("Wheel");
     plugin = await pluginArtifact.deploy(
       base.address,
-      voter.address,
-      [base.address],
-      [base.address],
+      incentives.address,
       treasury.address,
       developer.address,
+      community.address,
       factory.address,
       moola.address,
       vaultFactory.address,
@@ -81,8 +95,7 @@ describe("local: test0", function () {
       base.address,
       moola.address,
       factory.address,
-      plugin.address,
-      AddressZero
+      plugin.address
     );
     console.log("- Multicall Initialized");
 
@@ -90,8 +103,7 @@ describe("local: test0", function () {
       base.address,
       moola2.address,
       factory2.address,
-      plugin.address,
-      AddressZero
+      plugin.address
     );
     console.log("- Multicall2 Initialized");
 
@@ -99,7 +111,6 @@ describe("local: test0", function () {
     await moola2.setMinter(factory2.address, true);
     await moola.setMinter(plugin.address, true);
     await moola2.setMinter(plugin.address, true);
-    await voter.setPlugin(plugin.address);
     console.log("- System set up");
 
     console.log("Initialization Complete");
@@ -133,7 +144,7 @@ describe("local: test0", function () {
       plugin.connect(user0).play(user0.address, RandomNumber, {
         value: pointZeroOne,
       })
-    ).to.be.revertedWith("Plugin__InsufficientPayment");
+    ).to.be.revertedWith("Wheel__InsufficientPayment");
 
     await plugin.connect(user0).play(user0.address, RandomNumber, {
       value: price,
@@ -557,7 +568,7 @@ describe("local: test0", function () {
   it("Claim and distro from plugin", async function () {
     console.log("******************************************************");
     console.log("Treasury Balance: ", await base.balanceOf(treasury.address));
-    await plugin.claimAndDistribute();
+    await plugin.distribute();
     console.log("Treasury Balance: ", await base.balanceOf(treasury.address));
   });
 
@@ -655,6 +666,17 @@ describe("local: test0", function () {
     console.log("******************************************************");
     await network.provider.send("evm_increaseTime", [8 * 3600]);
     await network.provider.send("evm_mine");
+  });
+
+  it("owner sets feeSplit", async function () {
+    console.log("******************************************************");
+    await expect(plugin.setFeeSplit(52)).to.be.revertedWith(
+      "Wheel__InvalidFeeSplit"
+    );
+    await expect(plugin.setFeeSplit(3)).to.be.revertedWith(
+      "Wheel__InvalidFeeSplit"
+    );
+    await plugin.setFeeSplit(4);
   });
 
   it("User0 purchases tool", async function () {
@@ -1233,7 +1255,7 @@ describe("local: test0", function () {
 
   it("Claim and Distribute", async function () {
     console.log("******************************************************");
-    await plugin.claimAndDistribute();
+    await plugin.distribute();
   });
 
   it("everyone clicks cookie", async function () {
@@ -1289,7 +1311,7 @@ describe("local: test0", function () {
 
   it("Claim and Distribute", async function () {
     console.log("******************************************************");
-    await plugin.claimAndDistribute();
+    await plugin.distribute();
   });
 
   it("everyone clicks cookie", async function () {
@@ -1379,7 +1401,7 @@ describe("local: test0", function () {
   });
   it("Claim and Distribute", async function () {
     console.log("******************************************************");
-    await plugin.claimAndDistribute();
+    await plugin.distribute();
   });
 
   it("everyone clicks cookie", async function () {
@@ -1436,7 +1458,7 @@ describe("local: test0", function () {
 
   it("Claim and Distribute", async function () {
     console.log("******************************************************");
-    await plugin.claimAndDistribute();
+    await plugin.distribute();
   });
 
   it("Disable Spanker", async function () {

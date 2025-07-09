@@ -18,20 +18,39 @@ const ten = convert("10", 18);
 const oneHundred = convert("100", 18);
 const oneHundredEleven = convert("111", 18);
 
-let owner, treasury, user0, user1, user2, user3, user4, developer;
-let base, voter;
-let moola, bullas, factory, plugin, multicall, vaultFactory;
+let owner,
+  treasury,
+  incentives,
+  user0,
+  user1,
+  user2,
+  user3,
+  user4,
+  developer,
+  community;
+let base;
+let moola, bullas, factory, wheel, multicall, vaultFactory;
 let claim;
 
 describe("local: test1", function () {
   before("Initial set up", async function () {
     console.log("Begin Initialization");
 
-    [owner, treasury, user0, user1, user2, user3, user4, developer] =
-      await ethers.getSigners();
+    [
+      owner,
+      treasury,
+      incentives,
+      user0,
+      user1,
+      user2,
+      user3,
+      user4,
+      developer,
+      community,
+    ] = await ethers.getSigners();
 
     const vaultFactoryArtifact = await ethers.getContractFactory(
-      "BerachainRewardsVaultFactory"
+      "BerachainRewardVaultFactory"
     );
     vaultFactory = await vaultFactoryArtifact.deploy();
     console.log("- Vault Factory Initialized");
@@ -39,10 +58,6 @@ describe("local: test1", function () {
     const baseArtifact = await ethers.getContractFactory("Base");
     base = await baseArtifact.deploy();
     console.log("- BASE Initialized");
-
-    const voterArtifact = await ethers.getContractFactory("Voter");
-    voter = await voterArtifact.deploy();
-    console.log("- Voter Initialized");
 
     const bullasArtifact = await ethers.getContractFactory("Bullas");
     bullas = await bullasArtifact.deploy();
@@ -56,14 +71,13 @@ describe("local: test1", function () {
     factory = await factoryArtifact.deploy(moola.address);
     console.log("- Factory Initialized");
 
-    const pluginArtifact = await ethers.getContractFactory("WheelPlugin");
+    const pluginArtifact = await ethers.getContractFactory("Wheel");
     plugin = await pluginArtifact.deploy(
       base.address,
-      voter.address,
-      [base.address],
-      [base.address],
+      incentives.address,
       treasury.address,
       developer.address,
+      community.address,
       factory.address,
       moola.address,
       vaultFactory.address,
@@ -76,8 +90,7 @@ describe("local: test1", function () {
       base.address,
       moola.address,
       factory.address,
-      plugin.address,
-      AddressZero
+      plugin.address
     );
     console.log("- Multicall Initialized");
 
@@ -88,7 +101,6 @@ describe("local: test1", function () {
     await moola.setMinter(factory.address, true);
     await moola.setMinter(plugin.address, true);
     await moola.setMinter(owner.address, true);
-    await voter.setPlugin(plugin.address);
     await moola.setTransferWhitelist(claim.address, true);
     console.log("- System set up");
 
