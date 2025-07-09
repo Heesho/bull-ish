@@ -72,6 +72,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     
     mapping(uint256 => Slot) public wheel_Slot;
     mapping(uint64 => address) public sequence_Account;
+    mapping(address => bool) public account_Disqualified;
 
     struct Slot {
         address account;
@@ -85,6 +86,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     error Wheel__InvalidSequence();
     error Wheel__InvalidWheelSize();
     error Wheel__InvalidFeeSplit();
+    error Wheel__Disqualified();
 
     event Wheel__Distribute(uint256 incentivesFee, uint256 treasuryFee, uint256 developerFee, uint256 communityFee);
     event Wheel__PlayRequested(uint64 sequenceNumber, address indexed account);
@@ -100,6 +102,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     event Wheel__WheelSizeSet(uint256 wheelSize);
     event Wheel__PlayPriceSet(uint256 playPrice);
     event Wheel__FeeSplitSet(uint256 feeSplit);
+    event Wheel__DisqualifiedSet(address account, bool disqualified);
 
     modifier nonZeroInput(uint256 _amount) {
         if (_amount == 0) revert Wheel__InvalidZeroInput();
@@ -153,6 +156,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     function play(address account, bytes32 userRandomNumber) external payable nonReentrant {
         if (account == address(0)) revert Wheel__InvalidAccount();
         if (msg.value < playPrice) revert Wheel__InsufficientPayment();
+        if (account_Disqualified[account]) revert Wheel__Disqualified();
 
         if (address(entropy) != address(0)) {
             address entropyProvider = entropy.getDefaultProvider();
@@ -269,6 +273,11 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         if (_feeSplit > MAX_FEE_SPLIT || _feeSplit < MIN_FEE_SPLIT) revert Wheel__InvalidFeeSplit();
         feeSplit = _feeSplit;
         emit Wheel__FeeSplitSet(_feeSplit);
+    }
+
+    function setDisqualified(address account, bool _disqualified) external onlyOwner {
+        account_Disqualified[account] = _disqualified;
+        emit Wheel__DisqualifiedSet(account, _disqualified);
     }
 
     function balanceOf(address account) public view returns (uint256) {

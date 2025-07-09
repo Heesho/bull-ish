@@ -7,8 +7,6 @@ const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 const convert = (amount, decimals) => ethers.utils.parseUnits(amount, decimals);
 const divDec = (amount, decimals = 18) => amount / 10 ** decimals;
 
-const VOTER_ADDRESS = "0x54cCcf999B5bd3Ea12c52810fA60BB0eB41d109c";
-const OBERO_ADDRESS = "0x935938EC3a925d09365e6Bd1f4eec04faF870b6e";
 const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
 const VAULT_FACTORY_ADDRESS = "0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8";
 const MULTISIG_ADDRESS = "0x039ec2E90454892fCbA461Ecf8878D0C45FDdFeE";
@@ -23,23 +21,23 @@ let bullas, moola, factory, plugin, multicall;
 async function getContracts() {
   bullas = await ethers.getContractAt(
     "contracts/Bullas.sol:Bullas",
-    "0x6eC5215A1c1cf66f83d7511c7446397Abc707bBd"
+    "0xE885a94e99A2C4d03EceB5C1C9263b6145C960b3"
   );
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0x0CB023dE1bCaf822A234E60e0AbBDAC6bA4F598E"
+    "0x5D096e0dcF210C4A08087c8f279363Aff99e0485"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0x2624c226F45CA1DDF846c2F9e92554299593eBaA"
+    "0xBFe01B33ea5ebC81279462b8206690B1C5a9a419"
   );
   plugin = await ethers.getContractAt(
-    "contracts/WheelPlugin.sol:WheelPlugin",
-    "0x37bDB41e497C5b93C9D0652B52cF9979B1c8751e"
+    "contracts/Wheel.sol:Wheel",
+    "0xBB93ac44B9332d75d1c8f589d057a9b076385e48"
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x2AE424df0f2e935c19B84A53853194c1d625DD38"
+    "0x2Df7806557cf59cC585bDdD81dB64655e1976827"
   );
   console.log("Contracts Retrieved");
 }
@@ -82,12 +80,11 @@ async function deployFactory() {
 
 async function deployPlugin() {
   console.log("Starting Plugin Deployment");
-  const pluginArtifact = await ethers.getContractFactory("WheelPlugin");
+  const pluginArtifact = await ethers.getContractFactory("Wheel");
   const pluginContract = await pluginArtifact.deploy(
     WBERA_ADDRESS,
-    VOTER_ADDRESS,
-    [WBERA_ADDRESS],
-    [WBERA_ADDRESS],
+    MULTISIG_ADDRESS,
+    MULTISIG_ADDRESS,
     MULTISIG_ADDRESS,
     MULTISIG_ADDRESS,
     factory.address,
@@ -111,7 +108,6 @@ async function deployMulticall() {
     moola.address,
     factory.address,
     plugin.address,
-    OBERO_ADDRESS,
     {
       gasPrice: ethers.gasPrice,
     }
@@ -127,8 +123,8 @@ async function printDeployment() {
   console.log("Factory: ", factory.address);
   console.log("Plugin: ", plugin.address);
   console.log("Multicall: ", multicall.address);
-  console.log("Reward Vault: ", await plugin.getRewardVault());
-  console.log("Vault Token: ", await plugin.getVaultToken());
+  console.log("Reward Vault: ", await plugin.rewardVault());
+  console.log("Vault Token: ", await plugin.vaultToken());
   console.log("**************************************************************");
 }
 
@@ -158,9 +154,8 @@ async function verifyPlugin() {
     address: plugin.address,
     constructorArguments: [
       WBERA_ADDRESS,
-      VOTER_ADDRESS,
-      [WBERA_ADDRESS],
-      [WBERA_ADDRESS],
+      MULTISIG_ADDRESS,
+      MULTISIG_ADDRESS,
       MULTISIG_ADDRESS,
       MULTISIG_ADDRESS,
       factory.address,
@@ -179,7 +174,6 @@ async function verifyMulticall() {
       moola.address,
       factory.address,
       plugin.address,
-      OBERO_ADDRESS,
     ],
   });
 }
