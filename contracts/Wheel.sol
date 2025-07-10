@@ -104,11 +104,6 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     event Wheel__FeeSplitSet(uint256 feeSplit);
     event Wheel__DisqualifiedSet(address account, bool disqualified);
 
-    modifier nonZeroInput(uint256 _amount) {
-        if (_amount == 0) revert Wheel__InvalidZeroInput();
-        _;
-    }
-
     constructor(
         address _base,
         address _incentives,
