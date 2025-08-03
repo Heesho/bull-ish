@@ -16,24 +16,24 @@ contract Factory is ReentrancyGuard, Ownable {
     uint256 constant BASE_UPC = 1 ether;
     uint256 constant DURATION = 28800;
 
-    address immutable public units;
+    address public immutable units;
     address public booster;
     uint256 public maxPower = 1 ether;
 
     uint256 public lvlIndex;
-    mapping(uint256 => uint256) public lvl_Unlock;          // level => amount required to unlock
-    mapping(uint256 => uint256) public lvl_CostMultiplier;  // level => cost multiplier
+    mapping(uint256 => uint256) public lvl_Unlock; // level => amount required to unlock
+    mapping(uint256 => uint256) public lvl_CostMultiplier; // level => cost multiplier
 
     uint256 public toolIndex;
     uint256 public amountIndex;
-    mapping(uint256 => uint256) public toolId_BaseCost;         // tool id => base cost
-    mapping(uint256 => uint256) public toolId_BaseUps;          // tool id => base units per second
-    mapping(uint256 => uint256) public amount_CostMultiplier;   // tool amount => cost multiplier
-    mapping(address => uint256) public account_Ups;         // account => units per second
-    mapping(address => uint256) public account_Last;        // account => last time claimed
+    mapping(uint256 => uint256) public toolId_BaseCost; // tool id => base cost
+    mapping(uint256 => uint256) public toolId_BaseUps; // tool id => base units per second
+    mapping(uint256 => uint256) public amount_CostMultiplier; // tool amount => cost multiplier
+    mapping(address => uint256) public account_Ups; // account => units per second
+    mapping(address => uint256) public account_Last; // account => last time claimed
 
     mapping(address => mapping(uint256 => uint256)) public account_toolId_Amount; // account => tool id => amount
-    mapping(address => mapping(uint256 => uint256)) public account_toolId_Lvl;    // account => tool id => level
+    mapping(address => mapping(uint256 => uint256)) public account_toolId_Lvl; // account => tool id => level
     mapping(address => bool) public account_Disabled;
 
     error Factory__AmountMaxed();
@@ -41,7 +41,6 @@ contract Factory is ReentrancyGuard, Ownable {
     error Factory__InvalidInput();
     error Factory__NotAuthorized();
     error Factory__UpgradeLocked();
-    error Factory__InvalidAccount();
     error Factory__ToolDoesNotExist();
     error Factory__AccountDisabled();
 
@@ -56,7 +55,6 @@ contract Factory is ReentrancyGuard, Ownable {
     event Factory__DisabledSet(address account, bool disabled);
 
     modifier onlyAccount(address account) {
-        if (account == address(0)) revert Factory__InvalidAccount();
         if (msg.sender != account) revert Factory__NotAuthorized();
         _;
     }
@@ -74,7 +72,11 @@ contract Factory is ReentrancyGuard, Ownable {
         IUnits(units).mint(account, amount);
     }
 
-    function purchaseTool(address account, uint256 toolId, uint256 toolAmount) external nonReentrant onlyAccount(account) {
+    function purchaseTool(address account, uint256 toolId, uint256 toolAmount)
+        external
+        nonReentrant
+        onlyAccount(account)
+    {
         if (toolAmount == 0) revert Factory__InvalidInput();
         claim(account);
         uint256 cost = 0;
@@ -86,7 +88,9 @@ contract Factory is ReentrancyGuard, Ownable {
             if (unitCost == 0) revert Factory__ToolDoesNotExist();
             account_toolId_Amount[account][toolId]++;
             account_Ups[account] += getToolUps(toolId, account_toolId_Lvl[account][toolId]);
-            emit Factory__ToolPurchased(account, toolId, account_toolId_Amount[account][toolId], unitCost, account_Ups[account]);
+            emit Factory__ToolPurchased(
+                account, toolId, account_toolId_Amount[account][toolId], unitCost, account_Ups[account]
+            );
         }
         IUnits(units).burn(account, cost);
     }
@@ -96,9 +100,10 @@ contract Factory is ReentrancyGuard, Ownable {
         uint256 cost = toolId_BaseCost[toolId] * lvl_CostMultiplier[currentLvl + 1];
         if (cost == 0) revert Factory__LevelMaxed();
         if (account_toolId_Amount[account][toolId] < lvl_Unlock[currentLvl + 1]) revert Factory__UpgradeLocked();
-        claim(account); 
+        claim(account);
         account_toolId_Lvl[account][toolId]++;
-        account_Ups[account] += (getToolUps(toolId, currentLvl + 1) - getToolUps(toolId, currentLvl)) * account_toolId_Amount[account][toolId];
+        account_Ups[account] += (getToolUps(toolId, currentLvl + 1) - getToolUps(toolId, currentLvl))
+            * account_toolId_Amount[account][toolId];
         emit Factory__ToolUpgraded(account, toolId, account_toolId_Lvl[account][toolId], cost, account_Ups[account]);
         IUnits(units).burn(account, cost);
     }
@@ -109,7 +114,7 @@ contract Factory is ReentrancyGuard, Ownable {
             uint256 arrayIndex = i - lvlIndex;
             lvl_CostMultiplier[i] = cost[arrayIndex];
             lvl_Unlock[i] = unlock[arrayIndex];
-            emit Factory__LvlSet(i, cost[i], unlock[i]);
+            emit Factory__LvlSet(i, cost[arrayIndex], unlock[arrayIndex]);
         }
         lvlIndex += cost.length;
     }
@@ -152,13 +157,17 @@ contract Factory is ReentrancyGuard, Ownable {
     function getToolUps(uint256 toolId, uint256 lvl) public view returns (uint256) {
         return toolId_BaseUps[toolId] * 2 ** lvl;
     }
- 
+
     function getToolCost(uint256 toolId, uint256 amount) public view returns (uint256) {
         if (amount >= amountIndex) revert Factory__AmountMaxed();
         return toolId_BaseCost[toolId] * amount_CostMultiplier[amount] / PRECISION;
     }
 
-    function getMultipleToolCost(uint256 toolId, uint256 initialAmount, uint256 finalAmount) external view returns (uint256){
+    function getMultipleToolCost(uint256 toolId, uint256 initialAmount, uint256 finalAmount)
+        external
+        view
+        returns (uint256)
+    {
         uint256 cost = 0;
         for (uint256 i = initialAmount; i < finalAmount; i++) {
             cost += getToolCost(toolId, i);
@@ -179,5 +188,4 @@ contract Factory is ReentrancyGuard, Ownable {
             power = maxPower;
         }
     }
-
 }

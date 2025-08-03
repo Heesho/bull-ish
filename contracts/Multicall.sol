@@ -17,7 +17,10 @@ interface IFactory {
     function amountIndex() external view returns (uint256);
 
     function getToolCost(uint256 toolId, uint256 amount) external view returns (uint256);
-    function getMultipleToolCost(uint256 toolId, uint256 initialAmount, uint256 finalAmount) external view returns (uint256);
+    function getMultipleToolCost(uint256 toolId, uint256 initialAmount, uint256 finalAmount)
+        external
+        view
+        returns (uint256);
     function getToolUps(uint256 toolId, uint256 lvl) external view returns (uint256);
 }
 
@@ -77,7 +80,11 @@ contract Multicall {
         wheel = _wheel;
     }
 
-    function getMultipleToolCost(address account, uint256 toolId, uint256 purchaseAmount) external view returns (uint256) {
+    function getMultipleToolCost(address account, uint256 toolId, uint256 purchaseAmount)
+        external
+        view
+        returns (uint256)
+    {
         uint256 currentAmount = IFactory(factory).account_toolId_Amount(account, toolId);
         return IFactory(factory).getMultipleToolCost(toolId, currentAmount, currentAmount + purchaseAmount);
     }
@@ -105,7 +112,8 @@ contract Multicall {
             uint256 amount = IFactory(factory).account_toolId_Amount(account, i);
             uint256 amountRequired = IFactory(factory).lvl_Unlock(lvl + 1);
             toolUpgradeState[i].id = i;
-            toolUpgradeState[i].cost = IFactory(factory).toolId_BaseCost(i) * IFactory(factory).lvl_CostMultiplier(lvl + 1);
+            toolUpgradeState[i].cost =
+                IFactory(factory).toolId_BaseCost(i) * IFactory(factory).lvl_CostMultiplier(lvl + 1);
             toolUpgradeState[i].upgradeable = amount < amountRequired || toolUpgradeState[i].cost == 0 ? false : true;
         }
     }
@@ -121,8 +129,9 @@ contract Multicall {
             uint256 lvl = IFactory(factory).account_toolId_Lvl(account, i);
             toolState[i].ups = IFactory(factory).getToolUps(i, lvl);
             toolState[i].upsTotal = toolState[i].ups * toolState[i].amount;
-            toolState[i].percentOfProduction = IFactory(factory).account_Ups(account) == 0 ? 0 : toolState[i].upsTotal * 1e18 * 100 / IFactory(factory).account_Ups(account);
+            toolState[i].percentOfProduction = IFactory(factory).account_Ups(account) == 0
+                ? 0
+                : toolState[i].upsTotal * 1e18 * 100 / IFactory(factory).account_Ups(account);
         }
     }
-
 }

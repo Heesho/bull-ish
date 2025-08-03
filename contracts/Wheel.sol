@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import { IEntropyConsumer } from "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
-import { IEntropy } from "@pythnetwork/entropy-sdk-solidity/IEntropy.sol";
+import {IEntropyConsumer} from "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
+import {IEntropy} from "@pythnetwork/entropy-sdk-solidity/IEntropy.sol";
 
 interface IFactory {
     function getPower(address account) external view returns (uint256 upc, uint256 power);
@@ -32,7 +32,6 @@ interface IWBERA {
 }
 
 contract VaultToken is ERC20, Ownable {
-
     constructor() ERC20("BULL ISH V3", "BULL ISH V3") {}
 
     function mint(address to, uint256 amount) external onlyOwner {
@@ -63,11 +62,11 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     address public developer;
     address public community;
 
-    IEntropy public entropy;
+    IEntropy public immutable entropy;
     uint256 public playPrice = 0.69 ether;
     uint256 public wheelSize = 100;
     uint256 public feeSplit = 20;
-    
+
     mapping(uint256 => Slot) public wheel_Slot;
     mapping(uint64 => address) public sequence_Account;
     mapping(address => bool) public account_Disqualified;
@@ -78,13 +77,13 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     }
 
     error Wheel__InvalidAccount();
-    error Wheel__InvalidZeroInput();
     error Wheel__NotAuthorized();
     error Wheel__InsufficientPayment();
     error Wheel__InvalidSequence();
     error Wheel__InvalidWheelSize();
     error Wheel__InvalidFeeSplit();
     error Wheel__Disqualified();
+    error Wheel__ZeroAddress();
 
     event Wheel__Distribute(uint256 incentivesFee, uint256 treasuryFee, uint256 developerFee, uint256 communityFee);
     event Wheel__PlayRequested(uint64 sequenceNumber, address indexed account);
@@ -101,6 +100,11 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     event Wheel__PlayPriceSet(uint256 playPrice);
     event Wheel__FeeSplitSet(uint256 feeSplit);
     event Wheel__DisqualifiedSet(address account, bool disqualified);
+
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) revert Wheel__ZeroAddress();
+        _;
+    }
 
     constructor(
         address _base,
@@ -121,15 +125,12 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         factory = _factory;
         units = _units;
         entropy = IEntropy(_entropy);
-        
+
         vaultToken = address(new VaultToken());
         rewardVault = IBerachainRewardVaultFactory(_vaultFactory).createRewardVault(address(vaultToken));
     }
 
-    function distribute() 
-        external 
-        nonReentrant
-    {
+    function distribute() external nonReentrant {
         uint256 balance = address(this).balance;
         uint256 fee = balance * feeSplit / DIVISOR;
         uint256 treasuryFee = fee * 2 / 5;
@@ -163,7 +164,6 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
             mockCallback(account, userRandomNumber);
             emit Wheel__PlayRequested(0, account);
         }
-
     }
 
     receive() external payable {}
@@ -210,7 +210,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
 
         wheel_Slot[wheelIndex] = Slot(player, power);
         emit Wheel__SlotAdded(player, power);
-        
+
         VaultToken(vaultToken).mint(address(this), power);
         IERC20(vaultToken).safeApprove(rewardVault, 0);
         IERC20(vaultToken).safeApprove(rewardVault, power);
@@ -226,33 +226,33 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         emit Wheel__WheelSizeSet(_wheelSize);
     }
 
-    function setIncentives(address _incentives) external onlyOwner {
+    function setIncentives(address _incentives) external notZeroAddress(_incentives) onlyOwner {
         incentives = _incentives;
         emit Wheel__IncentivesSet(_incentives);
     }
 
-    function setTreasury(address _treasury) external onlyOwner {
+    function setTreasury(address _treasury) external notZeroAddress(_treasury) onlyOwner {
         treasury = _treasury;
         emit Wheel__TreasurySet(_treasury);
     }
-    
-    function setDeveloper(address _developer) external {
+
+    function setDeveloper(address _developer) external notZeroAddress(_developer) {
         if (msg.sender != developer) revert Wheel__NotAuthorized();
         developer = _developer;
         emit Wheel__DeveloperSet(_developer);
     }
 
-    function setCommunity(address _community) external onlyOwner {
+    function setCommunity(address _community) external notZeroAddress(_community) onlyOwner {
         community = _community;
         emit Wheel__CommunitySet(_community);
     }
 
-    function setFactory(address _factory) external onlyOwner {
+    function setFactory(address _factory) external notZeroAddress(_factory) onlyOwner {
         factory = _factory;
         emit Wheel__FactorySet(_factory);
     }
 
-    function setUnits(address _units) external onlyOwner {
+    function setUnits(address _units) external notZeroAddress(_units) onlyOwner {
         units = _units;
         emit Wheel__UnitsSet(_units);
     }
@@ -304,5 +304,4 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     function getEntropy() internal view override returns (address) {
         return address(entropy);
     }
-
 }

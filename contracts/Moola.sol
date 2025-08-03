@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Moola is ERC20, Ownable {
-
     bool public transferable = false;
     mapping(address => bool) public minters;
     mapping(address => bool) public transferWhitelist;
@@ -51,10 +50,7 @@ contract Moola is ERC20, Ownable {
         emit Moola__TransferWhitelisted(account, flag);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
-        internal
-        override(ERC20)
-    {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20) {
         super._beforeTokenTransfer(from, to, amount);
         if (from != address(0) && to != address(0)) {
             if (!transferable && !transferWhitelist[from]) {

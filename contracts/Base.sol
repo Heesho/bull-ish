@@ -12,7 +12,7 @@ contract Base is ERC20 {
     }
 
     // Withdraw ETH and burn WETH
-    function withdraw(uint amount) public {
+    function withdraw(uint256 amount) public {
         require(balanceOf(msg.sender) >= amount, "MockWETH: Insufficient balance");
         _burn(msg.sender, amount);
         payable(msg.sender).transfer(amount);

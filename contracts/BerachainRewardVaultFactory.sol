@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 contract RewardVault {
-
     address public vaultToken;
 
     uint256 public totalSupply;
@@ -21,16 +20,12 @@ contract RewardVault {
         balanceOf[account] -= amount;
         totalSupply -= amount;
     }
-
 }
 
 contract BerachainRewardVaultFactory {
-    
-    constructor() {
-    }
+    constructor() {}
 
     function createRewardVault(address vaultToken) external returns (address) {
         return address(new RewardVault(vaultToken));
     }
-
 }
