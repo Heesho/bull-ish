@@ -46,7 +46,7 @@ contract VaultToken is ERC20, Ownable {
 contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    uint256 public constant MAX_FEE_SPLIT = 50;
+    uint256 public constant MAX_FEE_SPLIT = 30;
     uint256 public constant MIN_FEE_SPLIT = 4;
     uint256 public constant DIVISOR = 100;
 
