@@ -379,7 +379,7 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  await printDeployment();
+  // await printDeployment();
 
   // await verifyMoola();
   // await verifyBullas();

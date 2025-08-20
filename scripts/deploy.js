@@ -7,17 +7,16 @@ const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 const convert = (amount, decimals) => ethers.utils.parseUnits(amount, decimals);
 const divDec = (amount, decimals = 18) => amount / 10 ** decimals;
 
-const VOTER_ADDRESS = "0xd7ea36ECA1cA3E73bC262A6D05DB01E60AE4AD47";
-const OBERO_ADDRESS = "0x40A8d9efE6A2C6C9D193Cc0A4476767748E68133";
 const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
 const VAULT_FACTORY_ADDRESS = "0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8";
-const BULLAS_ADDRESS = "0x333814f5E16EEE61d0c0B03a5b6ABbD424B381c2";
+const INCENTIVES_ADDRESS = "0xf99E36dcec7893e056a515cD160B007cCb1ED32E";
+const TREASURY_ADDRESS = "0x372791b58d4b38104b106c39cc824e14c7638aac";
 const DEVELOPER_ADDRESS = "0x2e4c3da66Da4100185Ed0Afdd059865aC1e787C3";
-const MULTISIG_ADDRESS = "0x2b6662e3d09efE0E17A46F68eb073F2fD58c53Fa";
+const COMMUNITY_ADDRESS = "0xc8584d6c507cd4cc6bbe568251ac4ee65a27caaa";
+const PYTH_ENTROPY_ADDRESS = "0x36825bf3Fbdf5a29E2d5148bfe7Dcf7B5639e320";
 
 // Contract Variables
 let moola, factory, plugin, multicall;
-let claim;
 
 /*===================================================================*/
 /*===========================  CONTRACT DATA  =======================*/
@@ -25,23 +24,19 @@ let claim;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0x2A3747F9513C0Fd2D480a57d0e46cEf9A7d0775A"
+    "0x836c0058930EAcccAD9178df42cEC7DA0D4884a8"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0x0dB74D6326623eFae36d2456c7830BF38B444389"
+    "0xf7a18c8EEa0feE5f2607a84fCb09E2446d6e61fA"
   );
   plugin = await ethers.getContractAt(
-    "contracts/QueuePlugin.sol:QueuePlugin",
-    "0x784bb8fA1Db3413A1E98250fdce9Ddb7Eaf4BB0d"
+    "contracts/Wheel.sol:Wheel",
+    "0xA00c4b869d2645D1aF132881c32dcD07c3AbaEd2"
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x5487cB78417Aa5923b80cdCf046a6554CA395874"
-  );
-  claim = await ethers.getContractAt(
-    "contracts/MoolaClaim.sol:MoolaClaim",
-    "0xf5f668D359c9fFe7E3B473ec409d4b5b3A03409d"
+    "0x90dB8d83E1089e3F41296E76B4f02AD1C856F7b2"
   );
   console.log("Contracts Retrieved");
 }
@@ -63,13 +58,9 @@ async function deployMoola() {
 async function deployFactory() {
   console.log("Starting Factory Deployment");
   const factoryArtifact = await ethers.getContractFactory("Factory");
-  const factoryContract = await factoryArtifact.deploy(
-    moola.address,
-    BULLAS_ADDRESS,
-    {
-      gasPrice: ethers.gasPrice,
-    }
-  );
+  const factoryContract = await factoryArtifact.deploy(moola.address, {
+    gasPrice: ethers.gasPrice,
+  });
   factory = await factoryContract.deployed();
   await sleep(5000);
   console.log("Factory Deployed at:", factory.address);
@@ -77,18 +68,17 @@ async function deployFactory() {
 
 async function deployPlugin() {
   console.log("Starting Plugin Deployment");
-  const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
+  const pluginArtifact = await ethers.getContractFactory("Wheel");
   const pluginContract = await pluginArtifact.deploy(
     WBERA_ADDRESS,
-    VOTER_ADDRESS,
-    [WBERA_ADDRESS],
-    [WBERA_ADDRESS],
-    MULTISIG_ADDRESS,
+    INCENTIVES_ADDRESS,
+    TREASURY_ADDRESS,
     DEVELOPER_ADDRESS,
+    COMMUNITY_ADDRESS,
     factory.address,
     moola.address,
-    BULLAS_ADDRESS,
     VAULT_FACTORY_ADDRESS,
+    PYTH_ENTROPY_ADDRESS,
     {
       gasPrice: ethers.gasPrice,
     }
@@ -105,9 +95,7 @@ async function deployMulticall() {
     WBERA_ADDRESS,
     moola.address,
     factory.address,
-    BULLAS_ADDRESS,
     plugin.address,
-    OBERO_ADDRESS,
     {
       gasPrice: ethers.gasPrice,
     }
@@ -122,8 +110,8 @@ async function printDeployment() {
   console.log("Factory: ", factory.address);
   console.log("Plugin: ", plugin.address);
   console.log("Multicall: ", multicall.address);
-  console.log("Reward Vault: ", await plugin.getRewardVault());
-  console.log("Vault Token: ", await plugin.getVaultToken());
+  console.log("Reward Vault: ", await plugin.rewardVault());
+  console.log("Vault Token: ", await plugin.vaultToken());
   console.log("**************************************************************");
 }
 
@@ -137,7 +125,7 @@ async function verifyMoola() {
 async function verifyFactory() {
   await hre.run("verify:verify", {
     address: factory.address,
-    constructorArguments: [moola.address, BULLAS_ADDRESS],
+    constructorArguments: [moola.address],
   });
 }
 
@@ -146,15 +134,14 @@ async function verifyPlugin() {
     address: plugin.address,
     constructorArguments: [
       WBERA_ADDRESS,
-      VOTER_ADDRESS,
-      [WBERA_ADDRESS],
-      [WBERA_ADDRESS],
-      MULTISIG_ADDRESS,
+      INCENTIVES_ADDRESS,
+      TREASURY_ADDRESS,
       DEVELOPER_ADDRESS,
+      COMMUNITY_ADDRESS,
       factory.address,
       moola.address,
-      BULLAS_ADDRESS,
       VAULT_FACTORY_ADDRESS,
+      PYTH_ENTROPY_ADDRESS,
     ],
   });
 }
@@ -166,9 +153,7 @@ async function verifyMulticall() {
       WBERA_ADDRESS,
       moola.address,
       factory.address,
-      BULLAS_ADDRESS,
       plugin.address,
-      OBERO_ADDRESS,
     ],
   });
 }
@@ -352,29 +337,14 @@ async function setLevels(wallet) {
 }
 
 async function transferOwnership(wallet) {
-  await moola.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
+  await moola.connect(wallet).transferOwnership(TREASURY_ADDRESS);
   console.log("Moola ownership transferred to multisig");
   await sleep(5000);
-  await factory.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
+  await factory.connect(wallet).transferOwnership(TREASURY_ADDRESS);
   console.log("Factory ownership transferred to multisig");
   await sleep(5000);
-  await plugin.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
+  await plugin.connect(wallet).transferOwnership(TREASURY_ADDRESS);
   console.log("Plugin ownership transferred to multisig");
-}
-
-async function deployMoolaClaim() {
-  console.log("Starting Moola Claim Deployment");
-  const moolaClaimArtifact = await ethers.getContractFactory("MoolaClaim");
-  const moolaClaimContract = await moolaClaimArtifact.deploy(moola.address);
-  claim = await moolaClaimContract.deployed();
-  console.log("Moola Claim Deployed at:", claim.address);
-}
-
-async function verifyMoolaClaim() {
-  await hre.run("verify:verify", {
-    address: claim.address,
-    constructorArguments: [moola.address],
-  });
 }
 
 async function main() {
@@ -401,15 +371,6 @@ async function main() {
   // await setLevels(wallet);
 
   // await transferOwnership(wallet);
-
-  // await deployMoolaClaim();
-  // await verifyMoolaClaim();
-
-  // await claim.setClaims(CLAIMS, AMOUNTS);
-
-  // await hre.run("verify:verify", {
-  //   address: "0xdDD3Ea5De9c70973E224D938B8f392EC4CC0171C",
-  // });
 
   console.log();
 }
