@@ -158,6 +158,12 @@ async function verifyMulticall() {
   });
 }
 
+async function verifyVaultToken() {
+  await hre.run("verify:verify", {
+    address: await plugin.vaultToken(),
+  });
+}
+
 async function setUpSystem(wallet) {
   console.log("Starting System Set Up");
   await moola.connect(wallet).setMinter(factory.address, true);
@@ -364,6 +370,7 @@ async function main() {
   // await verifyFactory();
   // await verifyPlugin();
   // await verifyMulticall();
+  await verifyVaultToken();
 
   // await setUpSystem(wallet);
   // await setTools(wallet);
