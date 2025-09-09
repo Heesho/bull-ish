@@ -6,6 +6,7 @@ const hre = require("hardhat");
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 const convert = (amount, decimals) => ethers.utils.parseUnits(amount, decimals);
 const divDec = (amount, decimals = 18) => amount / 10 ** decimals;
+const ten = convert("10", 18);
 
 const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
 const VAULT_FACTORY_ADDRESS = "0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8";
@@ -24,11 +25,11 @@ let moola, factory, plugin, multicall;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0x836c0058930EAcccAD9178df42cEC7DA0D4884a8"
+    "0xaDFcB8fb1310A995F88972526A995e44FEF7da2a"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0xf7a18c8EEa0feE5f2607a84fCb09E2446d6e61fA"
+    "0xE25c586e7785FF4e87858eDC870869a9a924C13D"
   );
   plugin = await ethers.getContractAt(
     "contracts/Wheel.sol:Wheel",
@@ -36,7 +37,7 @@ async function getContracts() {
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x90dB8d83E1089e3F41296E76B4f02AD1C856F7b2"
+    "0x56B2301c9345900Fb23da1323d9093359C90D6Bd"
   );
   console.log("Contracts Retrieved");
 }
@@ -348,9 +349,9 @@ async function transferOwnership(wallet) {
   await sleep(5000);
   await factory.connect(wallet).transferOwnership(TREASURY_ADDRESS);
   console.log("Factory ownership transferred to multisig");
-  await sleep(5000);
-  await plugin.connect(wallet).transferOwnership(TREASURY_ADDRESS);
-  console.log("Plugin ownership transferred to multisig");
+  // await sleep(5000);
+  // await plugin.connect(wallet).transferOwnership(TREASURY_ADDRESS);
+  // console.log("Plugin ownership transferred to multisig");
 }
 
 async function main() {
@@ -364,13 +365,13 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  // await printDeployment();
+  await printDeployment();
 
   // await verifyMoola();
   // await verifyFactory();
   // await verifyPlugin();
   // await verifyMulticall();
-  await verifyVaultToken();
+  // await verifyVaultToken();
 
   // await setUpSystem(wallet);
   // await setTools(wallet);
@@ -379,7 +380,8 @@ async function main() {
 
   // await transferOwnership(wallet);
 
-  console.log();
+  // await factory.setMaxPower(ten);
+  // console.log("Max Power Set");
 }
 
 main()
