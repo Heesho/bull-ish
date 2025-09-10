@@ -349,9 +349,9 @@ async function transferOwnership(wallet) {
   await sleep(5000);
   await factory.connect(wallet).transferOwnership(TREASURY_ADDRESS);
   console.log("Factory ownership transferred to multisig");
-  // await sleep(5000);
-  // await plugin.connect(wallet).transferOwnership(TREASURY_ADDRESS);
-  // console.log("Plugin ownership transferred to multisig");
+  await sleep(5000);
+  await plugin.connect(wallet).transferOwnership(TREASURY_ADDRESS);
+  console.log("Plugin ownership transferred to multisig");
 }
 
 async function main() {
@@ -365,7 +365,7 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  await printDeployment();
+  // await printDeployment();
 
   // await verifyMoola();
   // await verifyFactory();
