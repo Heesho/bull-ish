@@ -34,10 +34,10 @@ module.exports = {
     apiKey: SCAN_API_KEY,
     customChains: [
       {
-        network: "berachain",
+        network: "mainnet",
         chainId: 80094,
         urls: {
-          apiURL: "https://api.berascan.com/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=80094",
           browserURL: "https://berascan.com/",
         },
       },

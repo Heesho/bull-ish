@@ -15,6 +15,7 @@ const TREASURY_ADDRESS = "0x372791b58d4b38104b106c39cc824e14c7638aac";
 const DEVELOPER_ADDRESS = "0x2e4c3da66Da4100185Ed0Afdd059865aC1e787C3";
 const COMMUNITY_ADDRESS = "0xc8584d6c507cd4cc6bbe568251ac4ee65a27caaa";
 const PYTH_ENTROPY_ADDRESS = "0x36825bf3Fbdf5a29E2d5148bfe7Dcf7B5639e320";
+const BULLAS_NFT_ADDRESS = "";
 
 // Contract Variables
 let moola, factory, plugin, multicall;
@@ -25,11 +26,11 @@ let moola, factory, plugin, multicall;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0xaDFcB8fb1310A995F88972526A995e44FEF7da2a"
+    "0x0ac8549A58e6F05bAfd5a6F713A3acFE3Db54aA7"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0xE25c586e7785FF4e87858eDC870869a9a924C13D"
+    "0x838C046D230fFdac8E289D00651aD045d39cF7a9"
   );
   plugin = await ethers.getContractAt(
     "contracts/Wheel.sol:Wheel",
