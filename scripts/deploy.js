@@ -38,7 +38,7 @@ async function getContracts() {
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x56B2301c9345900Fb23da1323d9093359C90D6Bd"
+    "0xe9cb88b26Ea069dc5bA16ff6357cca68fB13DE05"
   );
   console.log("Contracts Retrieved");
 }
