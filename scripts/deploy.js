@@ -6,6 +6,7 @@ const hre = require("hardhat");
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 const convert = (amount, decimals) => ethers.utils.parseUnits(amount, decimals);
 const divDec = (amount, decimals = 18) => amount / 10 ** decimals;
+const five = convert("5", 18);
 const ten = convert("10", 18);
 
 const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
@@ -26,11 +27,11 @@ let moola, factory, plugin, multicall;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0x0ac8549A58e6F05bAfd5a6F713A3acFE3Db54aA7"
+    "0xe4CdE364083504BBe9A304185a6c6e7b26C78b87"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0x838C046D230fFdac8E289D00651aD045d39cF7a9"
+    "0x72939D832262fFBc9d6B362914B92fAA0Ecf3368"
   );
   plugin = await ethers.getContractAt(
     "contracts/Wheel.sol:Wheel",
@@ -38,7 +39,7 @@ async function getContracts() {
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0xe9cb88b26Ea069dc5bA16ff6357cca68fB13DE05"
+    "0x3EE441030984ACfeCf17FDa6953bea00a8c53Fa7"
   );
   console.log("Contracts Retrieved");
 }
@@ -381,7 +382,7 @@ async function main() {
 
   // await transferOwnership(wallet);
 
-  // await factory.setMaxPower(ten);
+  // await factory.setMaxPower(five);
   // console.log("Max Power Set");
 }
 
