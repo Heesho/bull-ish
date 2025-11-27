@@ -27,11 +27,11 @@ let moola, factory, plugin, multicall;
 async function getContracts() {
   moola = await ethers.getContractAt(
     "contracts/Moola.sol:Moola",
-    "0xe4CdE364083504BBe9A304185a6c6e7b26C78b87"
+    "0xed8ffa14cD0664e39CC3bD64e81AB1904A90c21E"
   );
   factory = await ethers.getContractAt(
     "contracts/Factory.sol:Factory",
-    "0x72939D832262fFBc9d6B362914B92fAA0Ecf3368"
+    "0xd4A0d12e82675bcb29F72e79D76C6d18a727e6dD"
   );
   plugin = await ethers.getContractAt(
     "contracts/Wheel.sol:Wheel",
@@ -39,7 +39,7 @@ async function getContracts() {
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0x3EE441030984ACfeCf17FDa6953bea00a8c53Fa7"
+    "0xF7433dB258f9363C426C2A9105A942932FDa49E6"
   );
   console.log("Contracts Retrieved");
 }
@@ -367,7 +367,7 @@ async function main() {
   // await deployFactory();
   // await deployPlugin();
   // await deployMulticall();
-  // await printDeployment();
+  await printDeployment();
 
   // await verifyMoola();
   // await verifyFactory();
