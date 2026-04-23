@@ -324,32 +324,14 @@ npx hardhat verify --network mainnet <CONTRACT_ADDRESS> [constructor args...]
 
 ## Deployed Addresses
 
-### Mainnet -- Current (V3, Berachain, chainId 80094)
-
-| Contract | Address | Status |
-|---|---|---|
-| Moola | `0xBdb8B9acd9063Cb75B6E64aEc566530cB85c2cF9` | Deployed, configured, ownership transferred to treasury |
-| Factory | `0xA5db7214F7cc61c8b01AE05bD0042F50BEb46647` | Deployed, configured, ownership transferred to treasury |
-| Wheel | `0xA00c4b869d2645D1aF132881c32dcD07c3AbaEd2` | **Needs multisig to call `setFactory` + `setUnits`** (see [Game Reset Handoff](#game-reset-handoff)) |
-| Multicall | `0xfd8653E380b4028cA9bf2e03b3E4f4B37cC0B385` | Deployed, ready |
-
-### Mainnet -- Previous (V2, deprecated)
+### Mainnet (Berachain, chainId 80094)
 
 | Contract | Address |
 |---|---|
-| Moola | `0xed8ffa14cD0664e39CC3bD64e81AB1904A90c21E` |
-| Factory | `0xd4A0d12e82675bcb29F72e79D76C6d18a727e6dD` |
-| Multicall | `0xF7433dB258f9363C426C2A9105A942932FDa49E6` |
-
-### Testnet (Bepolia, chainId 80069)
-
-| Contract | Address |
-|---|---|
-| Bullas | `0xa54D15bD0D3Dd39C1Cfa05C6Cd285A34B4a69BE7` |
-| Moola | `0x699ce67D64b4A62EADAdfA40196FFdFF31B63dBe` |
-| Factory | `0x86Fe6FCA762434BCD336c18bf8b1866C7033099A` |
-| Wheel | `0x2c2014C37A749434377955Bde51579A002Fbb3F1` |
-| Multicall | `0x92c222bDfC6dE0d386fe8DdAEF00869c4248b21C` |
+| Moola | `0xBdb8B9acd9063Cb75B6E64aEc566530cB85c2cF9` |
+| Factory | `0xA5db7214F7cc61c8b01AE05bD0042F50BEb46647` |
+| Wheel | `0xA00c4b869d2645D1aF132881c32dcD07c3AbaEd2` |
+| Multicall | `0xfd8653E380b4028cA9bf2e03b3E4f4B37cC0B385` |
 
 ### External Dependencies
 
