@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@nomicfoundation/hardhat-verify": "^1.1.1",
+    "@nomicfoundation/hardhat-verify": "2.0.13",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@openzeppelin/contracts": "^4.8.0",
     "@pythnetwork/entropy-sdk-solidity": "^1.5.0",

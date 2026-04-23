@@ -1,24 +1,55 @@
+// =============================================================================
+// Bull-ish Testnet Deploy Script (Berachain Bepolia)
+// =============================================================================
+// Deploys and configures the full Bull-ish gamified DeFi protocol on the Bepolia testnet:
+//   1. Bullas   - ERC-721 NFT collection (deployed here because it was already live on mainnet)
+//   2. Moola    - ERC-20 in-game currency token
+//   3. Factory  - Core game engine: manages players, tools, levels, and MOOLA claims
+//   4. Wheel    - Spin-to-win plugin: players pay BERA to spin for MOOLA rewards
+//   5. Multicall - Read-only aggregator for batching view calls from the frontend
+//
+// Key difference from the mainnet deploy script:
+//   - Bullas NFT is deployed here (on mainnet it was pre-existing)
+//   - All fee recipient addresses (incentives, treasury, developer, community) use a
+//     single MULTISIG_ADDRESS for simplicity, whereas mainnet has separate addresses
+//   - Includes additional setPlayPrice and setWheelSize configuration calls at the bottom
+// =============================================================================
+
 const { ethers } = require("hardhat");
 const { utils, BigNumber } = require("ethers");
 const hre = require("hardhat");
 
 // Constants
+// sleep: utility to pause execution between transactions so the RPC node can sync
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+// convert: shorthand for ethers.utils.parseUnits; converts a human-readable amount to its 18-decimal wei representation
 const convert = (amount, decimals) => ethers.utils.parseUnits(amount, decimals);
+// divDec: inverse of convert; divides a BigNumber by 10^decimals to get a human-readable number
 const divDec = (amount, decimals = 18) => amount / 10 ** decimals;
 
+// WBERA_ADDRESS: Wrapped BERA token on Berachain (same canonical address on both mainnet and testnet)
 const WBERA_ADDRESS = "0x6969696969696969696969696969696969696969";
+// VAULT_FACTORY_ADDRESS: Berachain's RewardVaultFactory; the Wheel uses this to create a BGT reward vault
 const VAULT_FACTORY_ADDRESS = "0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8";
+// MULTISIG_ADDRESS: Single testnet multisig used for ALL fee recipients (incentives, treasury, developer, community).
+// On mainnet these are four separate addresses, but on testnet a single address simplifies testing.
 const MULTISIG_ADDRESS = "0x039ec2E90454892fCbA461Ecf8878D0C45FDdFeE";
+// PYTH_ENTROPY_ADDRESS: Pyth Network's Entropy contract; provides verifiable randomness for Wheel spins
 const PYTH_ENTROPY_ADDRESS = "0x36825bf3Fbdf5a29E2d5148bfe7Dcf7B5639e320";
 
 // Contract Variables
+// These are populated by either deployX() or getContracts() before any configuration step.
+// Note: includes `bullas` which is not present in the mainnet deploy script.
 let bullas, moola, factory, plugin, multicall;
 
 /*===================================================================*/
 /*===========================  CONTRACT DATA  =======================*/
 
+// getContracts: Attaches to already-deployed contract instances by address.
+// Used after initial deployment so subsequent config steps can reference the contracts
+// without redeploying them.
 async function getContracts() {
+  // Bullas NFT -- deployed on testnet (on mainnet this was pre-existing)
   bullas = await ethers.getContractAt(
     "contracts/Bullas.sol:Bullas",
     "0xa54D15bD0D3Dd39C1Cfa05C6Cd285A34B4a69BE7"
@@ -45,6 +76,9 @@ async function getContracts() {
 /*===========================  END CONTRACT DATA  ===================*/
 /*===================================================================*/
 
+// deployBullas: Deploys the Bullas ERC-721 NFT collection contract.
+// No constructor arguments. This is only needed on testnet because the Bullas NFT
+// was already deployed separately on mainnet before the rest of the protocol.
 async function deployBullas() {
   console.log("Starting Bullas Deployment");
   const bullasArtifact = await ethers.getContractFactory("Bullas");
@@ -56,6 +90,8 @@ async function deployBullas() {
   console.log("Bullas Deployed at:", bullas.address);
 }
 
+// deployMoola: Deploys the Moola ERC-20 token contract.
+// No constructor arguments -- the deployer becomes the initial owner with minting privileges.
 async function deployMoola() {
   console.log("Starting Moola Deployment");
   const moolaArtifact = await ethers.getContractFactory("Moola");
@@ -67,6 +103,9 @@ async function deployMoola() {
   console.log("Moola Deployed at:", moola.address);
 }
 
+// deployFactory: Deploys the Factory (game engine) contract.
+// Constructor arg: moola.address -- the Factory needs a reference to the MOOLA token
+// so it can mint MOOLA when players claim their accumulated earnings.
 async function deployFactory() {
   console.log("Starting Factory Deployment");
   const factoryArtifact = await ethers.getContractFactory("Factory");
@@ -78,6 +117,19 @@ async function deployFactory() {
   console.log("Factory Deployed at:", factory.address);
 }
 
+// deployPlugin: Deploys the Wheel (spin-to-win) plugin contract.
+// Constructor args (in order):
+//   1. WBERA_ADDRESS      - Wrapped BERA; the token players pay to spin the wheel
+//   2. MULTISIG_ADDRESS   - Incentives recipient (testnet uses single multisig for all recipients)
+//   3. MULTISIG_ADDRESS   - Treasury recipient (same multisig -- testnet simplification)
+//   4. MULTISIG_ADDRESS   - Developer recipient (same multisig -- testnet simplification)
+//   5. MULTISIG_ADDRESS   - Community recipient (same multisig -- testnet simplification)
+//   6. factory.address    - Reference to the Factory so the Wheel can interact with game state
+//   7. moola.address      - Reference to the MOOLA token so the Wheel can mint spin rewards
+//   8. VAULT_FACTORY_ADDRESS - Berachain RewardVaultFactory; creates a BGT reward vault for the Wheel
+//   9. PYTH_ENTROPY_ADDRESS  - Pyth Entropy; provides verifiable on-chain randomness for spin outcomes
+//
+// Note: On mainnet, args 2-5 are four distinct addresses. On testnet they are all MULTISIG_ADDRESS.
 async function deployPlugin() {
   console.log("Starting Plugin Deployment");
   const pluginArtifact = await ethers.getContractFactory("Wheel");
@@ -100,6 +152,13 @@ async function deployPlugin() {
   console.log("Plugin Deployed at:", plugin.address);
 }
 
+// deployMulticall: Deploys the read-only Multicall helper contract.
+// Constructor args:
+//   1. WBERA_ADDRESS   - WBERA token address for price/balance lookups
+//   2. moola.address   - MOOLA token address for balance lookups
+//   3. factory.address - Factory address for aggregating player/game data
+//   4. plugin.address  - Wheel address for aggregating spin/reward data
+// The frontend uses Multicall to batch multiple view calls into a single RPC request.
 async function deployMulticall() {
   console.log("Starting Multicall Deployment");
   const multicallArtifact = await ethers.getContractFactory("Multicall");
@@ -116,6 +175,8 @@ async function deployMulticall() {
   console.log("Multicall Deployed at:", multicall.address);
 }
 
+// printDeployment: Logs all deployed contract addresses (including Bullas NFT)
+// and the auto-created Berachain reward vault / vault token addresses for easy reference.
 async function printDeployment() {
   console.log("**************************************************************");
   console.log("Moola: ", moola.address);
@@ -128,6 +189,7 @@ async function printDeployment() {
   console.log("**************************************************************");
 }
 
+// verifyMoola: Submits the Moola contract source to the block explorer for verification.
 async function verifyMoola() {
   await hre.run("verify:verify", {
     address: moola.address,
@@ -135,6 +197,8 @@ async function verifyMoola() {
   });
 }
 
+// verifyBullas: Submits the Bullas NFT contract source for block explorer verification.
+// Only needed on testnet since Bullas was deployed here (not on mainnet).
 async function verifyBullas() {
   await hre.run("verify:verify", {
     address: bullas.address,
@@ -142,6 +206,7 @@ async function verifyBullas() {
   });
 }
 
+// verifyFactory: Submits the Factory contract source for block explorer verification.
 async function verifyFactory() {
   await hre.run("verify:verify", {
     address: factory.address,
@@ -149,6 +214,8 @@ async function verifyFactory() {
   });
 }
 
+// verifyPlugin: Submits the Wheel contract source for block explorer verification.
+// Note: all four fee recipient args are the same MULTISIG_ADDRESS (testnet simplification).
 async function verifyPlugin() {
   await hre.run("verify:verify", {
     address: plugin.address,
@@ -166,6 +233,7 @@ async function verifyPlugin() {
   });
 }
 
+// verifyMulticall: Submits the Multicall contract source for block explorer verification.
 async function verifyMulticall() {
   await hre.run("verify:verify", {
     address: multicall.address,
@@ -178,17 +246,55 @@ async function verifyMulticall() {
   });
 }
 
+// setUpSystem: Grants minter permissions on the MOOLA token to the Factory and Wheel.
+//   - Factory needs minter rights so it can mint MOOLA when players claim their accumulated earnings.
+//   - Wheel (plugin) needs minter rights so it can mint MOOLA as spin rewards when players win.
+// Without these permissions, both contracts would revert on any mint attempt.
 async function setUpSystem(wallet) {
   console.log("Starting System Set Up");
+  // Grant the Factory contract permission to mint MOOLA (used when players claim earnings)
   await moola.connect(wallet).setMinter(factory.address, true);
   console.log("factory whitelisted to mint moola.");
+  // Grant the Wheel contract permission to mint MOOLA (used as spin-to-win rewards)
   await moola.connect(wallet).setMinter(plugin.address, true);
   console.log("plugin whitelisted to mint moola.");
   console.log("System Initialized");
 }
 
+// setTools: Configures the 20 in-game tools (buildings) that players can purchase.
+// Each tool has two parameters:
+//   - UPS (Units Per Second): the MOOLA earning rate this tool generates per second
+//   - Cost: the MOOLA price to buy the first copy of this tool
+//
+// Tools are ordered from cheapest/slowest (Tool 0) to most expensive/fastest (Tool 19).
+// The UPS-to-Cost ratio generally stays consistent, rewarding players who save up for
+// higher-tier tools with slightly better efficiency.
+//
+// Tool index:  UPS rate         |  MOOLA cost
+// -----------------------------------------
+// Tool  0:     0.0001 UPS       |  1 MOOLA
+// Tool  1:     0.0002 UPS       |  2 MOOLA
+// Tool  2:     0.0003 UPS       |  3 MOOLA
+// Tool  3:     0.0004 UPS       |  4 MOOLA
+// Tool  4:     0.0005 UPS       |  5 MOOLA
+// Tool  5:     0.0006 UPS       |  8 MOOLA
+// Tool  6:     0.0007 UPS       |  11 MOOLA
+// Tool  7:     0.0008 UPS       |  15 MOOLA
+// Tool  8:     0.001  UPS       |  20 MOOLA
+// Tool  9:     0.0027 UPS       |  50 MOOLA
+// Tool 10:     0.005  UPS       |  100 MOOLA
+// Tool 11:     0.0075 UPS       |  150 MOOLA
+// Tool 12:     0.015  UPS       |  300 MOOLA
+// Tool 13:     0.025  UPS       |  500 MOOLA
+// Tool 14:     0.1    UPS       |  1,500 MOOLA
+// Tool 15:     0.2    UPS       |  5,000 MOOLA
+// Tool 16:     0.3    UPS       |  15,000 MOOLA
+// Tool 17:     0.4    UPS       |  60,000 MOOLA
+// Tool 18:     0.5    UPS       |  250,000 MOOLA
+// Tool 19:     1.0    UPS       |  1,000,000 MOOLA
 async function setTools(wallet) {
   console.log("Starting Building Deployment");
+  // buildingUps: MOOLA earned per second for each tool (index 0-19)
   const buildingUps = [
     convert("0.0001", 18),
     convert("0.0002", 18),
@@ -211,6 +317,8 @@ async function setTools(wallet) {
     convert("0.5", 18),
     convert("1", 18),
   ];
+  // buildingCost: Base MOOLA cost to purchase the first copy of each tool (index 0-19)
+  // Subsequent copies of the same tool cost more, scaled by the tool multipliers (see setToolMultipliers)
   const buildingCost = [
     convert("1", 18),
     convert("2", 18),
@@ -237,8 +345,20 @@ async function setTools(wallet) {
   console.log("Buildings set");
 }
 
+// setToolMultipliers: Configures the cost scaling curve for purchasing multiple copies of the same tool.
+// Each entry represents the cost multiplier for the Nth copy of any tool.
+//   - Index 0 = 1st copy:  multiplier 1.0x    (base cost)
+//   - Index 1 = 2nd copy:  multiplier 1.15x   (15% more expensive)
+//   - Index 2 = 3rd copy:  multiplier 1.3225x  (1.15 * 1.15)
+//   - ...and so on, compounding at 15% per additional copy.
+//
+// Formula: multiplier[n] = 1.15^n
+// This creates an exponential cost curve that discourages hoarding a single tool type
+// and encourages players to diversify across different tools.
+// The array contains 100 entries, supporting up to 100 copies of each tool.
 async function setToolMultipliers(wallet) {
   console.log("Starting Multiplier Deployment");
+  // buildingMultipliers: 100 entries of 1.15^n compounding cost multipliers (index 0 = 1x, index 99 = ~1,021,142x)
   const buildingMultipliers = [
     convert("1", 18),
     convert("1.15", 18),
@@ -345,6 +465,19 @@ async function setToolMultipliers(wallet) {
   console.log("Multipliers set");
 }
 
+// setLevels: Configures the 6 player progression levels.
+// Each level has two parameters:
+//   - Unlock threshold: cumulative MOOLA that must be earned/claimed to reach this level
+//   - Cost multiplier: a percentage discount/surcharge applied to tool purchases at this level
+//
+// Level 0: threshold =         0 MOOLA, cost multiplier =   0% (starter level, no bonus)
+// Level 1: threshold =        10 MOOLA, cost multiplier =   1%
+// Level 2: threshold =        50 MOOLA, cost multiplier =   5%
+// Level 3: threshold =       500 MOOLA, cost multiplier =  25%
+// Level 4: threshold =    50,000 MOOLA, cost multiplier =  50%
+// Level 5: threshold = 5,000,000 MOOLA, cost multiplier = 100%
+//
+// Higher levels unlock access to better tools and provide increasing cost efficiency.
 async function setLevels(wallet) {
   console.log("Starting Level Deployment");
   await factory
@@ -356,6 +489,12 @@ async function setLevels(wallet) {
   console.log("Levels set");
 }
 
+// transferOwnership: Transfers ownership of all three ownable contracts
+// (Moola, Factory, Wheel) from the deployer wallet to the MULTISIG_ADDRESS.
+// This is a critical security step -- once ownership is transferred, only the multisig
+// can perform admin actions (e.g., updating tools, adjusting fees, pausing contracts).
+// On testnet all three go to the same MULTISIG_ADDRESS (on mainnet they go to TREASURY_ADDRESS).
+// The 5-second sleep between transfers ensures each transaction is confirmed before the next.
 async function transferOwnership(wallet) {
   await moola.connect(wallet).transferOwnership(MULTISIG_ADDRESS);
   console.log("Moola ownership transferred to multisig");
@@ -367,13 +506,36 @@ async function transferOwnership(wallet) {
   console.log("Plugin ownership transferred to multisig");
 }
 
+// main: Orchestrates the full deployment and configuration sequence.
+//
+// Deployment order (when all steps are active):
+//   1. deployMoola()          - Deploy the MOOLA token first (other contracts depend on it)
+//   2. deployBullas()         - Deploy the Bullas NFT (testnet only; pre-existing on mainnet)
+//   3. deployFactory()        - Deploy the Factory (needs moola.address)
+//   4. deployPlugin()         - Deploy the Wheel (needs factory.address and moola.address)
+//   5. deployMulticall()      - Deploy the Multicall helper (needs all contract addresses above)
+//   6. printDeployment()      - Log all addresses for the deployment record
+//   7. verifyX()              - Verify each contract's source on the block explorer
+//   8. setUpSystem()          - Grant minter permissions to Factory and Wheel
+//   9. setTools()             - Configure the 20 tools with UPS rates and MOOLA costs
+//  10. setToolMultipliers()   - Configure the 15% compounding cost curve (100 entries)
+//  11. setLevels()            - Configure the 6 player levels with thresholds and multipliers
+//  12. transferOwnership()    - Hand off all contract ownership to the multisig
+//  13. setPlayPrice()         - Set the BERA cost per Wheel spin (3.3 BERA in wei)
+//  14. setWheelSize()         - Set the number of segments on the Wheel (300)
+//
+// Most steps are commented out because deployment is done incrementally --
+// uncomment each step as needed and re-run the script. getContracts() is used
+// to re-attach to already-deployed contracts between runs.
 async function main() {
   const [wallet] = await ethers.getSigners();
 
   console.log("Using wallet: ", wallet.address);
 
+  // Re-attach to already-deployed contracts (used for post-deploy configuration steps)
   await getContracts();
 
+  // --- Step 1-5: Initial contract deployments (already completed, so commented out) ---
   // await deployMoola();
   // await deployBullas();
   // await deployFactory();
@@ -381,12 +543,14 @@ async function main() {
   // await deployMulticall();
   // await printDeployment();
 
+  // --- Step 6: Source verification on the block explorer (already completed) ---
   // await verifyMoola();
   // await verifyBullas();
   // await verifyFactory();
   // await verifyPlugin();
   // await verifyMulticall();
 
+  // --- Step 7-10: System configuration (already completed) ---
   // await setUpSystem(wallet);
   // await setTools(wallet);
   // await setToolMultipliers(wallet);
@@ -394,9 +558,12 @@ async function main() {
 
   // console.log("starting transactions");
 
+  // --- Step 11: Ownership transfer to multisig (already completed) ---
   // await transferOwnership(wallet);
 
+  // --- Step 12: Set the BERA cost per Wheel spin to 3.3 BERA (in wei) ---
   // await plugin.setPlayPrice("3300000000000000000");
+  // --- Step 13: Set the Wheel to 300 segments (determines prize distribution granularity) ---
   // await plugin.setWheelSize(300);
 
   // console.log("transactions complete");

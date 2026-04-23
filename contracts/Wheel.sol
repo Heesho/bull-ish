@@ -31,6 +31,10 @@ interface IWBERA {
     function deposit() external payable;
 }
 
+/// @title VaultToken — Internal Staking Receipt for Wheel
+/// @notice ERC-20 minted/burned exclusively by the Wheel contract to represent a player's
+///         staked power in the Berachain reward vault. Not intended for direct user interaction.
+/// @dev Ownership is transferred to the Wheel at deploy time so only it can mint/burn.
 contract VaultToken is ERC20, Ownable {
     constructor() ERC20("BULL ISH V3", "BULL ISH V3") {}
 
@@ -43,34 +47,75 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
+/// @title Wheel — Spin-to-Earn with Berachain PoL Delegation
+/// @notice Players pay BERA to spin a randomized wheel. The winning slot is determined by
+///         Pyth VRF (or a mock fallback), and the player's Factory-derived power score is
+///         delegate-staked into a Berachain reward vault for BGT yield.
+/// @dev The wheel has a fixed number of slots. Each spin randomly picks a slot; if it is
+///      already occupied, the previous occupant's stake is withdrawn before the new player
+///      is placed. BERA revenue is split between protocol incentives (80% default) and
+///      team wallets (20% default, subdivided 40/40/20 among treasury/dev/community).
 contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
+    /// @notice Upper bound for `feeSplit` — team can take at most 30% of BERA revenue.
     uint256 public constant MAX_FEE_SPLIT = 30;
+
+    /// @notice Lower bound for `feeSplit` — team must take at least 4% of BERA revenue.
     uint256 public constant MIN_FEE_SPLIT = 4;
+
+    /// @notice Percentage base (100) for fee arithmetic.
     uint256 public constant DIVISOR = 100;
 
+    /// @notice WBERA (or WETH on testnet) address. BERA is wrapped before distribution.
     address public immutable base;
+
+    /// @notice Internal ERC-20 receipt token minted/burned to track power staked in the vault.
     address public immutable vaultToken;
+
+    /// @notice Berachain native reward vault where VaultTokens are delegate-staked for BGT.
     address public immutable rewardVault;
 
+    /// @notice Factory contract used to read a player's UPC and power score.
     address public factory;
+
+    /// @notice MOOLA token. Minted as a reward to the spinner.
     address public units;
 
+    /// @notice Recipient of the incentives portion of BERA fees (~80%).
     address public incentives;
+
+    /// @notice Recipient of the treasury portion of the team fee (40% of feeSplit).
     address public treasury;
+
+    /// @notice Recipient of the developer portion of the team fee (40% of feeSplit).
     address public developer;
+
+    /// @notice Recipient of the community portion of the team fee (20% of feeSplit).
     address public community;
 
+    /// @notice Pyth Entropy contract for verifiable randomness. address(0) enables mock fallback.
     IEntropy public immutable entropy;
+
+    /// @notice BERA cost per spin (default 0.69 BERA).
     uint256 public playPrice = 0.69 ether;
+
+    /// @notice Total number of slots on the wheel. Can only be increased.
     uint256 public wheelSize = 100;
+
+    /// @notice Percentage of BERA revenue allocated to the team (remainder goes to incentives).
     uint256 public feeSplit = 20;
 
+    /// @notice Mapping from slot index to occupant address and their staked power.
     mapping(uint256 => Slot) public wheel_Slot;
+
+    /// @notice Maps Pyth sequence numbers to the player who initiated the spin.
     mapping(uint64 => address) public sequence_Account;
+
+    /// @notice Disqualified accounts are blocked from spinning (anti-abuse).
     mapping(address => bool) public account_Disqualified;
 
+    /// @dev Represents a single wheel slot: the occupant and the amount of power they have staked.
     struct Slot {
         address account;
         uint256 power;
@@ -106,6 +151,15 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         _;
     }
 
+    /// @param _base         WBERA / WETH address.
+    /// @param _incentives   Address receiving the incentives share of BERA fees.
+    /// @param _treasury     Address receiving the treasury share.
+    /// @param _developer    Address receiving the developer share.
+    /// @param _community    Address receiving the community share.
+    /// @param _factory      Factory contract for power lookups.
+    /// @param _units        MOOLA token to mint as spin rewards.
+    /// @param _vaultFactory Berachain RewardVaultFactory to create the staking vault.
+    /// @param _entropy      Pyth Entropy contract (address(0) for mock mode).
     constructor(
         address _base,
         address _incentives,
@@ -130,6 +184,10 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         rewardVault = IBerachainRewardVaultFactory(_vaultFactory).createRewardVault(address(vaultToken));
     }
 
+    /// @notice Wrap all accumulated BERA to WBERA and distribute to protocol wallets.
+    /// @dev Split: `feeSplit`% goes to the team (40% treasury, 40% developer, 20% community),
+    ///      the remainder goes to `incentives` for Berachain PoL reward gauges.
+    ///      Callable by anyone — acts on the contract's entire BERA balance.
     function distribute() external nonReentrant {
         uint256 balance = address(this).balance;
         uint256 fee = balance * feeSplit / DIVISOR;
@@ -147,6 +205,13 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         emit Wheel__Distribute(incentivesFee, treasuryFee, developerFee, communityFee);
     }
 
+    /// @notice Pay BERA to spin the wheel. Requests Pyth VRF for the random slot index.
+    /// @dev If Pyth Entropy is configured (address != 0), a VRF callback is requested and
+    ///      the result arrives asynchronously in `entropyCallback`. Otherwise falls through
+    ///      to `mockCallback` with pseudo-random data for local/testnet use.
+    ///      msg.value must cover `playPrice` + Pyth provider fee (if applicable).
+    /// @param account          The player to credit (must not be address(0) or disqualified).
+    /// @param userRandomNumber Player-supplied entropy seed mixed into the Pyth request.
     function play(address account, bytes32 userRandomNumber) external payable nonReentrant {
         if (account == address(0)) revert Wheel__InvalidAccount();
         if (msg.value < playPrice) revert Wheel__InsufficientPayment();
@@ -168,6 +233,12 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
 
     receive() external payable {}
 
+    /// @dev Pyth Entropy callback — invoked by the Entropy contract with the verified random number.
+    ///      Picks a slot via `randomNumber % wheelSize`. If the slot is occupied, the previous
+    ///      occupant's power is unstaked from the reward vault. The new player's power is then
+    ///      delegate-staked and they receive UPC worth of MOOLA as a spin reward.
+    /// @param sequenceNumber Pyth request identifier used to look up the player address.
+    /// @param randomNumber   Verified random value from Pyth VRF.
     function entropyCallback(uint64 sequenceNumber, address, bytes32 randomNumber) internal override {
         address player = sequence_Account[sequenceNumber];
         if (player == address(0)) revert Wheel__InvalidSequence();
@@ -197,6 +268,10 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         emit Wheel__Played(player, upc, power);
     }
 
+    /// @dev Mock version of the entropy callback for local/testnet environments where
+    ///      Pyth Entropy is unavailable. Same slot-replacement and staking logic.
+    /// @param player       The player to place on the wheel.
+    /// @param randomNumber Pseudo-random value generated from block data.
     function mockCallback(address player, bytes32 randomNumber) internal {
         uint256 wheelIndex = uint256(randomNumber) % wheelSize;
         Slot memory slot = wheel_Slot[wheelIndex];
@@ -220,71 +295,105 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         emit Wheel__Played(player, upc, power);
     }
 
+    /// @notice Increase the number of wheel slots. Cannot decrease to prevent losing occupied slots.
+    /// @param _wheelSize New wheel size (must be strictly greater than the current size).
     function setWheelSize(uint256 _wheelSize) external onlyOwner {
         if (_wheelSize <= wheelSize) revert Wheel__InvalidWheelSize();
         wheelSize = _wheelSize;
         emit Wheel__WheelSizeSet(_wheelSize);
     }
 
+    /// @notice Update the incentives wallet (receives the majority of BERA revenue).
+    /// @param _incentives New incentives address.
     function setIncentives(address _incentives) external notZeroAddress(_incentives) onlyOwner {
         incentives = _incentives;
         emit Wheel__IncentivesSet(_incentives);
     }
 
+    /// @notice Update the treasury wallet.
+    /// @param _treasury New treasury address.
     function setTreasury(address _treasury) external notZeroAddress(_treasury) onlyOwner {
         treasury = _treasury;
         emit Wheel__TreasurySet(_treasury);
     }
 
+    /// @notice Update the developer wallet. Only callable by the current developer (self-custody).
+    /// @param _developer New developer address.
     function setDeveloper(address _developer) external notZeroAddress(_developer) {
         if (msg.sender != developer) revert Wheel__NotAuthorized();
         developer = _developer;
         emit Wheel__DeveloperSet(_developer);
     }
 
+    /// @notice Update the community wallet.
+    /// @param _community New community address.
     function setCommunity(address _community) external notZeroAddress(_community) onlyOwner {
         community = _community;
         emit Wheel__CommunitySet(_community);
     }
 
+    /// @notice Point to a new Factory contract for power lookups.
+    /// @param _factory New Factory address.
     function setFactory(address _factory) external notZeroAddress(_factory) onlyOwner {
         factory = _factory;
         emit Wheel__FactorySet(_factory);
     }
 
+    /// @notice Point to a new MOOLA token contract.
+    /// @param _units New MOOLA address.
     function setUnits(address _units) external notZeroAddress(_units) onlyOwner {
         units = _units;
         emit Wheel__UnitsSet(_units);
     }
 
+    /// @notice Update the BERA cost per spin.
+    /// @param _playPrice New price in wei.
     function setPlayPrice(uint256 _playPrice) external onlyOwner {
         playPrice = _playPrice;
         emit Wheel__PlayPriceSet(_playPrice);
     }
 
+    /// @notice Adjust the team vs. incentives fee split percentage.
+    /// @dev Bounded by MIN_FEE_SPLIT (4%) and MAX_FEE_SPLIT (30%) to protect players.
+    /// @param _feeSplit New team percentage (remainder goes to incentives).
     function setFeeSplit(uint256 _feeSplit) external onlyOwner {
         if (_feeSplit > MAX_FEE_SPLIT || _feeSplit < MIN_FEE_SPLIT) revert Wheel__InvalidFeeSplit();
         feeSplit = _feeSplit;
         emit Wheel__FeeSplitSet(_feeSplit);
     }
 
+    /// @notice Ban or unban an account from spinning the wheel.
+    /// @param account       Address to disqualify or re-qualify.
+    /// @param _disqualified `true` to ban, `false` to allow.
     function setDisqualified(address account, bool _disqualified) external onlyOwner {
         account_Disqualified[account] = _disqualified;
         emit Wheel__DisqualifiedSet(account, _disqualified);
     }
 
+    /// @notice Returns total power delegate-staked on behalf of `account` in the reward vault.
+    /// @param account Player address.
+    /// @return Staked power balance.
     function balanceOf(address account) public view returns (uint256) {
         return IRewardVault(rewardVault).getDelegateStake(account, address(this));
     }
 
+    /// @notice Returns total power delegate-staked across all players in the reward vault.
+    /// @return Aggregate staked power.
     function totalSupply() public view returns (uint256) {
         return IRewardVault(rewardVault).getTotalDelegateStaked(address(this));
     }
 
+    /// @notice Read a single wheel slot by index.
+    /// @param index Slot position on the wheel.
+    /// @return The Slot struct (account + power) at the given index.
     function getSlot(uint256 index) public view returns (Slot memory) {
         return wheel_Slot[index];
     }
 
+    /// @notice Read a contiguous range of wheel slots. Useful for paginated frontend rendering.
+    /// @param start Start index (inclusive).
+    /// @param end   End index (exclusive).
+    /// @return Array of Slot structs in the [start, end) range.
     function getWheelFragment(uint256 start, uint256 end) public view returns (Slot[] memory) {
         Slot[] memory result = new Slot[](end - start);
         for (uint256 i = start; i < end; i++) {
@@ -293,6 +402,8 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         return result;
     }
 
+    /// @notice Read all wheel slots in a single call.
+    /// @return Array of all `wheelSize` Slot structs.
     function getWheel() public view returns (Slot[] memory) {
         Slot[] memory result = new Slot[](wheelSize);
         for (uint256 i = 0; i < wheelSize; i++) {
@@ -301,6 +412,7 @@ contract Wheel is IEntropyConsumer, ReentrancyGuard, Ownable {
         return result;
     }
 
+    /// @dev Required by IEntropyConsumer — returns the Pyth Entropy contract address.
     function getEntropy() internal view override returns (address) {
         return address(entropy);
     }
